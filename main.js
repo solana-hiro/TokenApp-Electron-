@@ -71,19 +71,9 @@ function createWindow() {
     minHeight: 400, 
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: false,
-      devTools: true
+      contextIsolation: false
     }
   });
-
-  mainWindow.webContents.once('dom-ready', () => {
-    console.log('\n=== DEBUG INFO ===');
-    console.log('To debug in Chrome, visit:');
-    console.log('chrome://inspect');
-    console.log('\nOr directly:');
-    console.log(`http://localhost:9222\n`);
-  });
-  
   cleanupInvalidPairs();
 
   // Set initial opacity 
