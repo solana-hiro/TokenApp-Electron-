@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Widget</title>
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #6964DE, #FCA5F1);
+            --accent-gradient: linear-gradient(135deg, #13B0F5, #E70FAA);
+            --glass-bg: rgba(13, 14, 20, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: transparent;
+            color: white;
+            overflow: hidden;
+            border-radius: 12px;
+        }
+        
+        .widget-container {
+            width: 100%;
+            height: 100vh;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .drag-region {
+            height: 36px;
+            width: 100%;
+            -webkit-app-region: drag;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px 12px 0 0;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 8px;
+            -webkit-app-region: no-drag;
+        }
+        
+        .btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .btn.close:hover {
+            background: rgba(255, 0, 0, 0.7);
+        }
+        
+        .btn.add {
+            background: var(--accent-gradient);
+            font-weight: bold;
+        }
+        
+        .crypto-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+        
+        .crypto-item {
+            padding: 10px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+        
+        .crypto-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .crypto-name {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .crypto-price {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .price-up {
+            animation: flash-green 0.5s;
+        }
+        
+        .price-down {
+            animation: flash-red 0.5s;
+        }
+        
+        .crypto-change {
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .positive {
+            background: rgba(40, 167, 69, 0.2);
+            color: #30DB5B;
+        }
+        
+        .negative {
+            background: rgba(220, 53, 69, 0.2);
+            color: #FF5252;
+        }
+        
+        .pairs-container {
+            display: flex;
+            justify-content: center;
+            padding: 10px;
+            gap: 8px;
+        }
+        
+        .pair-btn {
+            padding: 5px 12px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        
+        .pair-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .pair-btn.active {
+            background: var(--accent-gradient);
+            border: none;
+        }
+        
+        .search-modal {
+            position: absolute;
+            top: 36px;
+            left: 0;
+            right: 0;
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            padding: 16px;
+            display: none;
+            border-radius: 0 0 12px 12px;
+            z-index: 100;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: white;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .search-results {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        /* Add these styles to your CSS section */
+
+/* Enhanced search results */
+.search-item {
+    display: flex;
+    padding: 8px 10px;
+    cursor: pointer;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    transition: background 0.2s;
+}
+
+.search-item:hover, .search-item:focus {
+    background: rgba(255, 255, 255, 0.15);
+    outline: none;
+}
+
+.search-item-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.coin-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.coin-symbol {
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.coin-name {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.search-loading, .search-no-results {
+    padding: 12px;
+    text-align: center;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Modal overlay for pair selection */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+}
+
+.modal-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 400px;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: scale(0.95);
+    transition: transform 0.3s;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+.modal-overlay.visible .modal-content {
+    transform: scale(1);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+/* Selected coin display */
+.selected-coin {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.selected-coin .coin-icon {
+    width: 30px;
+    height: 30px;
+}
+
+.selected-coin #selected-coin-name {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+/* Pair selection options */
+.pair-options {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.pair-option-group h4 {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0.8;
+}
+
+.pair-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.pair-select-btn {
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pair-select-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Custom pair input */
+.custom-pair-input {
+    display: flex;
+    margin-top: 10px;
+    gap: 8px;
+}
+
+.custom-pair-input input {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 14px;
+}
+
+.custom-pair-input button {
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: var(--accent-gradient);
+    border: none;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+        
+        .search-item {
+            padding: 8px 10px;
+            cursor: pointer;
+            border-radius: 6px;
+            margin-bottom: 4px;
+        }
+        
+        .search-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Settings button */
+        .btn.settings {
+            background: rgba(255, 255, 255, 0.15);
+            font-size: 12px;
+        }
+
+        /* Settings panel */
+        .settings-panel {
+            position: absolute;
+            top: 0;
+            right: -280px; /* Initially hidden */
+            width: 280px;
+            height: 100%;
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            border-left: 1px solid var(--glass-border);
+            padding: 16px;
+            transition: right 0.3s ease;
+            z-index: 200;
+            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .settings-panel.visible {
+            right: 0;
+        }
+
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .settings-header h3 {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .btn.close-settings {
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+        }
+
+        .settings-section {
+            margin-bottom: 20px;
+        }
+
+        .settings-section > label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        /* Slider styles */
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent-gradient);
+            cursor: pointer;
+        }
+
+        .slider-value {
+            width: 40px;
+            font-size: 12px;
+        }
+
+        /* Size inputs */
+        .size-inputs {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .size-inputs input {
+            width: 60px;
+            padding: 4px 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            color: white;
+            font-size: 12px;
+        }
+
+        .btn.apply-size {
+            width: auto;
+            height: 22px;
+            padding: 0 8px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        /* Decimal place selector */
+        .decimal-selector {
+            display: flex;
+            gap: 5px;
+        }
+
+        .decimal-btn {
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .decimal-btn.active {
+            background: var(--accent-gradient);
+            border: none;
+        }
+
+        /* Resize handles */
+        .resize-handle {
+            position: absolute;
+            background: transparent;
+            z-index: 100;
+        }
+
+        .resize-handle-right {
+            cursor: ew-resize;
+            width: 8px;
+            top: 0;
+            right: 0;
+            bottom: 0;
+        }
+
+        .resize-handle-bottom {
+            cursor: ns-resize;
+            height: 8px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+
+        .resize-handle-corner {
+            cursor: nwse-resize;
+            width: 16px;
+            height: 16px;
+            right: 0;
+            bottom: 0;
+        }
+        
+        .connection-status {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            opacity: 0.7;
+        }
+        .search-status {
+            padding: 5px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 8px;
+        }
+        
+        .status-connected {
+            background-color: rgba(40, 167, 69, 0.2);
+            color: #30DB5B;
+        }
+        
+        .status-disconnected {
+            background-color: rgba(220, 53, 69, 0.2);
+            color: #FF5252;
+        }
+
+        /* Add these styles to your CSS section */
+
+.search-modal {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--glass-bg);
+    backdrop-filter: blur(15px);
+    display: none;
+    z-index: 200;
+    overflow-y: auto;
+}
+
+.search-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid var(--glass-border);
+    position: sticky;
+    top: 0;
+    background: var(--glass-bg);
+    backdrop-filter: blur(15px);
+    z-index: 10;
+}
+
+.search-header h3 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.search-body {
+    padding: 15px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: white;
+    font-size: 15px;
+    margin-bottom: 15px;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
+.search-status {
+    padding: 5px 0;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.search-results {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.search-item {
+    display: flex;
+    padding: 10px 12px;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.search-item:hover, .search-item:focus {
+    background: rgba(255, 255, 255, 0.1);
+    outline: none;
+}
+
+.search-item-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
+.search-loading, .search-no-results {
+    padding: 20px 0;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 14px;
+}
+
+.btn.close-search-modal {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.btn.close-search-modal:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.search-result-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+
+.search-item-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.pair-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.pair-option-loading, .pair-option-error {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 13px;
+    padding: 5px 0;
+    width: 100%;
+    text-align: center;
+}
+
+.pair-select-option {
+    background: linear-gradient(45deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.15));
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    padding: 6px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    flex: 1;
+    min-width: 80px;
+    transition: all 0.2s;
+}
+
+.pair-select-option:hover {
+    background: linear-gradient(45deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.2));
+    transform: translateY(-2px);
+}
+
+.pair-name {
+    font-weight: bold;
+    font-size: 13px;
+}
+
+.pair-price {
+    margin-top: 4px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Chart container styles */
+.chart-container {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 150px;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(5px);
+    padding: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+}
+
+.chart-container.visible {
+    transform: translateY(0);
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.chart-title {
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.chart-close {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.price-chart {
+    height: 100px;
+    width: 100%;
+}
+
+.btn.full-width {
+    width: 100%;
+    padding: 10px;
+    margin: 5px 0;
+    text-align: center;
+}
+/* Add this to your CSS */
+
+.crypto-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.btn.add {
+    width: auto;
+    height: auto;
+    padding: 8px 12px;
+    background: var(--accent-gradient);
+    border-radius: 12px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn.add span {
+    font-size: 16px;
+}
+        
+        @keyframes flash-green {
+            0% { background-color: transparent; }
+            30% { background-color: rgba(40, 167, 69, 0.3); }
+            100% { background-color: transparent; }
+        }
+        
+        @keyframes flash-red {
+            0% { background-color: transparent; }
+            30% { background-color: rgba(220, 53, 69, 0.3); }
+            100% { background-color: transparent; }
+        }
+        
+        /* Add this to your CSS */
+.pair-select-option {
+    background: linear-gradient(45deg, rgba(30, 30, 30, 0.8), rgba(40, 40, 40, 0.8));
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 10px 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    flex: 1;
+    min-width: 90px;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.pair-select-option:hover {
+    background: linear-gradient(45deg, rgba(40, 40, 40, 0.9), rgba(50, 50, 50, 0.9));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.pair-select-option.added {
+    background: linear-gradient(45deg, rgba(0, 80, 0, 0.8), rgba(0, 100, 0, 0.8));
+    border-color: rgba(100, 255, 100, 0.3);
+}
+
+.added-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #32cd32;
+    color: white;
+    border-radius: 10px;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    animation: pop 0.3s ease-out;
+}
+
+@keyframes pop {
+    0% { transform: scale(0); }
+    70% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.pair-name {
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.pair-price {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Embedded chart styles */
+.chart-area {
+    height: 0;
+    overflow: hidden;
+    transition: height 0.3s ease;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 0 0 8px 8px;
+    margin-top: -5px;
+    position: relative;
+}
+
+.chart-area.visible {
+    height: 150px;
+    margin-bottom: 10px;
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+}
+
+.chart-title {
+    font-size: 12px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.chart-close {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0 4px;
+}
+
+.chart-body {
+    height: 120px;
+    padding: 0 10px;
+}
+
+/* Make crypto items clickable */
+.crypto-item {
+    cursor: pointer;
+    position: relative;
+}
+
+.crypto-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.crypto-item.active {
+    background: rgba(70, 130, 180, 0.2);
+    border-color: rgba(70, 130, 180, 0.4);
+}
+
+.crypto-volume {
+    color: #888888;
+    font-size: 0.8em;
+    margin-top: 2px;
+}
+
+.crypto-icon {
+        width: 24px;
+        height: 24px;
+        margin-right: 10px;
+        border-radius: 50%;
+}
+
+.crypto-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    flex: 1;
+}
+
+.crypto-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.exchange-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+        color: #e0e0e0;
+    }
+    
+    .exchange-table th, .exchange-table td {
+        padding: 8px 12px;
+        text-align: left;
+        border-bottom: 1px solid #333;
+    }
+    
+    .exchange-table th {
+        background-color: #1a1a1a;
+        color: #aaa;
+    }
+    
+    .exchange-table th.sortable {
+        cursor: pointer;
+    }
+    
+    .exchange-table th.sortable:hover {
+        color: white;
+    }
+    
+    .exchange-table th.active {
+        color: white;
+    }
+    
+    .exchange-table tbody tr:hover {
+        background-color: #1e1e1e;
+    }
+    
+    .comparison-loading {
+        text-align: center;
+        padding: 20px;
+        color: #888;
+    }
+    
+    .add-pair-btn {
+        background: #1e88e5;
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 3px;
+        cursor: pointer;
+    }
+    
+    .add-pair-btn:hover {
+        background: #1976d2;
+    }
+
+    .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.7);
+}
+
+.modal-content {
+    background-color: #121212;
+    margin: 10% auto;
+    padding: 0;
+    border: 1px solid #333;
+    width: 80%;
+    max-width: 700px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    border-radius: 6px;
+}
+
+.modal-header {
+    padding: 12px 16px;
+    background-color: #1a1a1a;
+    color: white;
+    border-bottom: 1px solid #333;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 6px 6px 0 0;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.close-modal {
+    color: #aaa;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+.close-modal:hover {
+    color: white;
+}
+
+.modal-body {
+    padding: 16px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.crypto-actions {
+    display: flex;
+    align-items: center;
+}
+
+/* Add this to your widget.html styles section */
+.exchange-comparison {
+    margin-top: 20px;
+}
+
+.exchange-comparison-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.exchange-comparison-header h3 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.btn.back-btn {
+    padding: 5px 10px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.btn.back-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.search-item {
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    transition: background 0.2s;
+}
+
+.search-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.search-item-icon {
+    width: 30px;
+    height: 30px;
+    margin-right: 12px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Add this to your CSS (can be added in applyDarkTheme function) */
+.search-result-item {
+    background-color: #121212;
+    padding: 12px;
+    margin-bottom: 12px;
+    border-radius: 6px;
+    border: 1px solid #333;
+}
+
+.search-item-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.coin-icon {
+    width: 24px;
+    height: 24px;
+    margin-right: 10px;
+    border-radius: 50%;
+}
+
+.coin-symbol {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.coin-name {
+    font-size: 12px;
+    color: #aaa;
+}
+
+.exchange-comparison {
+    margin-top: 10px;
+}
+
+.exchange-comparison-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.exchange-comparison-header h3 {
+    margin: 0;
+    font-size: 14px;
+    color: #bbb;
+}
+
+.exchange-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.exchange-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    border-radius: 4px;
+    background-color: #1a1a1a;
+    position: relative;
+}
+
+.exchange-item.top-volume {
+    background-color: rgba(54, 162, 235, 0.15);
+    border: 1px solid rgba(54, 162, 235, 0.3);
+}
+
+.exchange-item-left {
+    flex: 1;
+}
+
+.exchange-name {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.exchange-pair {
+    font-size: 12px;
+    color: #aaa;
+}
+
+.exchange-item-right {
+    text-align: right;
+    margin-right: 10px;
+}
+
+.exchange-volume {
+    font-size: 14px;
+    color: #4caf50;
+}
+
+.exchange-price {
+    font-size: 12px;
+    color: #aaa;
+}
+
+.add-exchange-btn {
+    background-color: #1e88e5;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-left: 10px;
+}
+
+.add-exchange-btn:hover {
+    background-color: #1976d2;
+}
+
+.add-exchange-btn.added {
+    background-color: #43a047;
+}
+
+.loading-exchanges, .no-exchanges, .exchange-error {
+    padding: 10px;
+    text-align: center;
+    color: #888;
+    font-style: italic;
+}
+
+.exchange-error {
+    color: #f44336;
+}
+
+.search-item-details {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.search-item-symbol {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.search-item-name {
+    font-size: 13px;
+    opacity: 0.7;
+}
+
+.exchange-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.exchange-table th, .exchange-table td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.exchange-table th {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.exchange-table td {
+    font-size: 14px;
+}
+
+.add-exchange-btn {
+    background: linear-gradient(45deg, #2196F3, #21CBF3);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.add-exchange-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.comparison-loading {
+    text-align: center;
+    padding: 20px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 14px;
+}
+
+.btn.compare-exchanges {
+    background-color: transparent;
+    color: #888;
+    border: none;
+    padding: 2px 5px;
+    margin-right: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.btn.compare-exchanges:hover {
+    color: white;
+}
+
+.chart-area {
+    height: 0;
+    overflow: hidden;
+    transition: height 0.3s ease;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 0 0 8px 8px;
+    margin-top: -5px;
+    position: relative;
+}
+
+.chart-area.visible {
+    height: 180px; /* Increased from 150px to ensure full visibility */
+    margin-bottom: 10px;
+}
+
+.chart-body {
+    height: 150px; /* Increased from 120px */
+    padding: 0 10px 10px 10px; /* Added bottom padding */
+}
+
+canvas.price-chart {
+    width: 100% !important;
+    height: 100% !important;
+}
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="widget-container">
+        <div class="drag-region">
+            <div class="title">Crypto Widget</div>
+            <div class="controls">
+                <button class="btn settings" id="settings-btn">⚙</button>
+                <button class="btn close" id="close-app">×</button>
+
+            </div>
+        </div>
+        
+        
+<div class="crypto-header">
+    <h3>Your Cryptos</h3>
+    <button class="btn add" id="add-crypto">
+        <span>+</span> Add
+    </button>
+</div>
+        <div class="crypto-list" id="crypto-list">
+            <!-- Crypto items will be dynamically added here -->
+        </div>
+        
+        <div class="search-modal" id="search-modal">
+            <div class="search-header">
+                <h3>Search Cryptocurrencies</h3>
+                <button class="btn close-search-modal" id="close-search-modal">×</button>
+            </div>
+            <div class="search-body">
+                <input type="text" class="search-input" id="search-input" placeholder="Search for cryptocurrency...">
+                <div class="search-status" id="search-status">Enter at least 2 characters to search</div>
+                
+                <div class="search-results" id="search-results"></div>
+                
+                <!-- Exchange comparison will be shown here -->
+                <div id="exchange-comparison" class="exchange-comparison" style="display: none;">
+                    <div class="exchange-comparison-header">
+                        <h3 id="comparison-title">Exchange Comparison</h3>
+                        <button id="back-to-search" class="btn back-btn">Back to Search</button>
+                    </div>
+                    <div class="comparison-loading">Loading exchange data...</div>
+                    <table class="exchange-table" id="exchange-comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Exchange</th>
+                                <th>Pair</th>
+                                <th class="volume-header">Volume</th>
+                                <th>Price</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="exchange-comparison-body">
+                            <!-- Exchange data will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+    <!-- Settings panel -->
+<div class="settings-panel" id="settings-panel">
+    <div class="settings-header">
+        <h3>Widget Settings</h3>
+        <button class="btn close-settings" id="close-settings">×</button>
+    </div>
+    
+    <div class="settings-section">
+        <label>Opacity</label>
+        <div class="slider-container">
+            <input type="range" class="slider" id="opacity-slider" min="10" max="100" value="80">
+            <span class="slider-value" id="opacity-value">80%</span>
+        </div>
+    </div>
+    <div class="settings-section">
+        <label>Maintenance</label>
+        <button id="cleanup-btn" class="btn full-width">Clean Invalid Pairs</button>
+    </div>
+    
+    <div class="settings-section">
+        <label>Size</label>
+        <div class="size-inputs">
+            <div>
+                <label>W:</label>
+                <input type="number" id="width-input" min="200" max="600" step="10">
+            </div>
+            <div>
+                <label>H:</label>
+                <input type="number" id="height-input" min="300" max="800" step="10">
+            </div>
+            <button class="btn apply-size" id="apply-size">Apply</button>
+        </div>
+    </div>
+    
+    <div class="settings-section">
+        <label>Decimal Places</label>
+        <div class="decimal-selector">
+            <button class="decimal-btn active" data-places="auto">Auto</button>
+            <button class="decimal-btn" data-places="2">2</button>
+            <button class="decimal-btn" data-places="4">4</button>
+            <button class="decimal-btn" data-places="6">6</button>
+            <button class="decimal-btn" data-places="8">8</button>
+        </div>
+    </div>
+</div>
+
+<!-- Resize handles -->
+<div class="resize-handle resize-handle-right"></div>
+<div class="resize-handle resize-handle-bottom"></div>
+<div class="resize-handle resize-handle-corner"></div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="widget.js"></script>
+</body>
+</html>
