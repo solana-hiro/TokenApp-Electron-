@@ -2083,56 +2083,125 @@ function updatePairButtons(activePair) {
     });
 }
 
-function refreshCryptoList() {
-    const cryptoListEl = document.getElementById('crypto-list');
-    cryptoListEl.innerHTML = '';
+// function refreshCryptoList() {
+//     // Clear current list
+//     const cryptoListEl = document.getElementById('crypto-list');
+//     cryptoListEl.innerHTML = '';
     
-    trackedCryptos.forEach(crypto => {
-        let symbol, pair;
+//     // Create placeholder items while loading
+//     trackedCryptos.forEach(crypto => {
+//         // Check if this is a combined symbol with pair
+//         let symbol, pair;
         
-        if (crypto.includes('/')) {
-            [symbol, pair] = crypto.split('/');
-        } else {
-            symbol = crypto;
-            pair = currentPair;
-        }
+//         if (crypto.includes('/')) {
+//             [symbol, pair] = crypto.split('/');
+//         } else {
+//             symbol = crypto;
+//             pair = currentPair;
+//         }
         
-        const price = lastPrices[`${symbol}/${pair}`] || '...';
+//         const price = lastPrices[`${symbol}/${pair}`] || '...';
         
-        // Get coin info and image URL
-        const coinInfo = cryptoList[symbol] || fallbackCoins[symbol] || {};
-        const imageUrl = coinInfo.ImageUrl ? 
-            `https://www.cryptocompare.com${coinInfo.ImageUrl}` : 
-            'https://www.cryptocompare.com/media/37746251/empty.png';
+//         // Create the container with item and chart area
+//         const container = document.createElement('div');
+//         container.className = 'crypto-item-container';
         
-        const container = document.createElement('div');
-        container.className = 'crypto-item-container';
+//         // Create the main item
+//         const item = document.createElement('div');
+//         item.className = 'crypto-item';
+//         item.dataset.symbol = symbol;
+//         item.dataset.pair = pair;
+// // Add this to the item HTML template in your refreshCryptoList function
+// item.innerHTML = `
+//     <div class="crypto-info">
+//         <div class="crypto-name">${symbol}/${pair}</div>
+//         <div class="crypto-change">--</div>
+//         <div class="crypto-volume"></div>
+//     </div>
+//     <div class="crypto-price">${price}</div>
+//     <div class="crypto-actions">
+//         <button class="btn compare-exchanges" title="Compare Exchanges" data-symbol="${symbol}" data-pair="${pair}">📊</button>
+//         <button class="btn remove" data-symbol="${symbol}" data-pair="${pair}">×</button>
+//     </div>
+// `;
+
+// // Then add an event listener for this new button
+// item.querySelector('.compare-exchanges').addEventListener('click', (e) => {
+//     e.stopPropagation();
+//     const symbol = e.target.getAttribute('data-symbol');
+//     const pair = e.target.getAttribute('data-pair');
+//     showExchangeComparison(symbol, pair);
+// });
         
-        const item = document.createElement('div');
-        item.className = 'crypto-item';
-        item.dataset.symbol = symbol;
-        item.dataset.pair = pair;
+//         // Add click event to show chart
+//         item.addEventListener('click', (e) => {
+//             if (e.target.classList.contains('remove')) return; // Don't trigger on remove button
+            
+//             // Toggle active state on this item
+//             const allItems = document.querySelectorAll('.crypto-item');
+//             allItems.forEach(i => {
+//                 if (i !== item) i.classList.remove('active');
+//             });
+//             item.classList.toggle('active');
+            
+//             // Toggle chart visibility
+//             const chartArea = container.querySelector('.chart-area');
+//             const isVisible = chartArea.classList.contains('visible');
+            
+//             // Hide all other charts
+//             const allCharts = document.querySelectorAll('.chart-area');
+//             allCharts.forEach(chart => {
+//                 if (chart !== chartArea) chart.classList.remove('visible');
+//             });
+            
+//             // Toggle this chart
+//             chartArea.classList.toggle('visible', !isVisible);
+            
+//             // Load chart data if needed
+//             if (!isVisible && !chartArea.dataset.loaded) {
+//                 chartArea.dataset.loaded = 'true';
+//                 displayEmbeddedChart(symbol, pair, chartArea);
+//             }
+//         });
         
-        item.innerHTML = `
-            <div class="crypto-info">
-                <img src="${imageUrl}" 
-                     class="crypto-icon" 
-                     onerror="this.src='https://www.cryptocompare.com/media/37746251/empty.png'"
-                     alt="${symbol}">
-                <div class="crypto-details">
-                    <div class="crypto-name">${symbol}/${pair}</div>
-                    <div class="crypto-change">--</div>
-                    <div class="crypto-volume"></div>
-                </div>
-            </div>
-            <div class="crypto-price">${price}</div>
-            <button class="btn remove" data-symbol="${symbol}" data-pair="${pair}">×</button>
-        `;
-                
-        container.appendChild(item);
-        cryptoListEl.appendChild(container);
-    });
-}
+//         // Add remove button event
+//         const removeBtn = item.querySelector('.remove');
+//         removeBtn.addEventListener('click', (e) => {
+//             e.stopPropagation();
+//             removeCrypto(`${symbol}/${pair}`);
+//         });
+        
+//         // Create chart area (initially hidden)
+//         const chartArea = document.createElement('div');
+//         chartArea.className = 'chart-area';
+//         chartArea.innerHTML = `
+//             <div class="chart-header">
+//                 <div class="chart-title">${symbol}/${pair} Chart</div>
+//                 <button class="chart-close">×</button>
+//             </div>
+//             <div class="chart-body">
+//                 <canvas class="price-chart" id="chart-${symbol}${pair}"></canvas>
+//             </div>
+//         `;
+        
+//         // Add close button for chart
+//         chartArea.querySelector('.chart-close').addEventListener('click', (e) => {
+//             e.stopPropagation();
+//             chartArea.classList.remove('visible');
+//             item.classList.remove('active');
+//         });
+        
+//         // Add to container
+//         container.appendChild(item);
+//         container.appendChild(chartArea);
+        
+//         // Add to main list
+//         cryptoListEl.appendChild(container);
+//     });
+    
+//     // Setup WebSocket with new list
+//     setupBinanceWebSocket();
+// }
 
 
 // Add this function to fetch and display exchange data
