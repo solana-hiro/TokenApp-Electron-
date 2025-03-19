@@ -30,6 +30,7 @@ const supportedPairsCache = {}; // Format: {exchange: {symbolPair: true}}
 const priceCache = {}; // Format: {symbol/pair: {price: number, source: string, timestamp: number}}
 const CACHE_EXPIRY = 60 * 1000; // 60 seconds cache expiry
 
+let currentTheme = localStorage.getItem('theme') || 'light';
 
 const fallbackCoins = {
     "BTC": { 
@@ -84,116 +85,92 @@ const fallbackCoins = {
     }
 };
 
-// async function fetchPriceWithWaterfall(symbol, pair) {
-//     const cacheKey = `${symbol}/${pair}`;
-//     const now = Date.now();
+// ... existing code ...
+const exchangesToFetch = ['binance', 'okx', 'mexc', 'gate', 'bitget', 'kucoin', 'bybit', 'htx'];
+// ... existing code ...
+
+// Function to fetch exchange data for a specific pair
+async function fetchExchangeDataForPair(symbol, pair) {
+    // Normalize symbols for API compatibility
+    const geckoSymbol = symbol.toLowerCase();
+    const geckoPair = pair.toLowerCase();
     
-//     // Check if we have a recent cached price first
-//     if (priceCache[cacheKey] && now - priceCache[cacheKey].timestamp < CACHE_EXPIRY) {
-//         // Only log once every 10 fetch cycles to reduce log clutter
-//         if (Math.random() < 0.1) {
-//             console.log(`Using cached price for ${cacheKey} from ${priceCache[cacheKey].source}`);
-//         }
-//         return priceCache[cacheKey];
-//     }
+    // Try CoinGecko first
+    try {
+        // ... existing CoinGecko fetching logic ...
+    } catch (geckoError) {
+        console.error('CoinGecko API error:', geckoError);
+    }
     
-//     console.log(`Fetching price for ${symbol}/${pair} using waterfall model`);
-    
-//     // Initialize support history for this pair if needed
-//     if (!supportHistory[cacheKey]) {
-//         supportHistory[cacheKey] = {};
-//     }
-    
-//     // Get exchanges to try, prioritizing those known to work
-//     const exchangesToTry = prioritizeExchanges(symbol, pair);
-    
-//     // Try each exchange in order until we get a price
-//     for (const exchange of exchangesToTry) {
-//         try {
-//             // Skip if we know this exchange has failed multiple times for this pair
-//             if (supportHistory[cacheKey][exchange] && 
-//                 supportHistory[cacheKey][exchange].failures >= FAILURE_THRESHOLD) {
-//                 console.log(`Skipping ${exchange} (known problematic for ${cacheKey})`);
-//                 continue;
-//             }
-            
-//             console.log(`Trying ${exchange} for ${symbol}/${pair}...`);
-            
-//             // Use timeout for API calls to avoid long waits
-//             const controller = new AbortController();
-//             const timeoutId = setTimeout(() => controller.abort(), 5000); // 5-second timeout
-            
-//             try {
-//                 const result = await fetchPriceFromExchange(exchange, symbol, pair, controller.signal);
-//                 clearTimeout(timeoutId);
+    // Fallback to manually querying major exchanges
+    try {
+        const exchanges = exchangesToFetch; // Use the updated list of exchanges
+        const exchangeData = [];
+        
+        // Query each exchange for the pair's data
+        for (const exchange of exchanges) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000);
                 
-//                 if (result && result.price) {
-//                     console.log(`Successfully fetched price from ${exchange}: ${result.price}`);
-                    
-//                     // Update support history - record success
-//                     if (!supportHistory[cacheKey][exchange]) {
-//                         supportHistory[cacheKey][exchange] = { successes: 0, failures: 0 };
-//                     }
-//                     supportHistory[cacheKey][exchange].successes++;
-//                     supportHistory[cacheKey][exchange].lastSuccess = now;
-                    
-//                     // Cache the result
-//                     priceCache[cacheKey] = {
-//                         price: result.price,
-//                         change: result.change || 0,
-//                         source: exchange,
-//                         timestamp: now
-//                     };
-                    
-//                     return priceCache[cacheKey];
-//                 } else {
-//                     // Record failure in support history
-//                     if (!supportHistory[cacheKey][exchange]) {
-//                         supportHistory[cacheKey][exchange] = { successes: 0, failures: 0 };
-//                     }
-//                     supportHistory[cacheKey][exchange].failures++;
-//                 }
-//             } catch (error) {
-//                 clearTimeout(timeoutId);
+                const result = await fetchPriceFromExchange(exchange, symbol, pair, controller.signal);
+                clearTimeout(timeoutId);
                 
-//                 // Record failure in support history
-//                 if (!supportHistory[cacheKey][exchange]) {
-//                     supportHistory[cacheKey][exchange] = { successes: 0, failures: 0 };
-//                 }
-//                 supportHistory[cacheKey][exchange].failures++;
-                
-//                 if (error.name === 'AbortError') {
-//                     console.warn(`${exchange} timed out for ${symbol}/${pair}`);
-//                 } else {
-//                     console.error(`Error fetching from ${exchange}:`, error.message);
-//                 }
-//             }
-//         } catch (error) {
-//             console.error(`Error with ${exchange}:`, error.message);
-            
-//             // Record failure in support history
-//             if (!supportHistory[cacheKey][exchange]) {
-//                 supportHistory[cacheKey][exchange] = { successes: 0, failures: 0 };
-//             }
-//             supportHistory[cacheKey][exchange].failures++;
-//         }
-//     }
+                if (result && result.price && result.volume) {
+                    exchangeData.push({
+                        exchange: exchange.charAt(0).toUpperCase() + exchange.slice(1), // Capitalize
+                        pair: `${symbol}/${pair}`,
+                        volume: result.volume,
+                        price: result.price,
+                        volumeFormatted: formatVolume(result.volume),
+                        pairKey: `${symbol}/${pair}`
+                    });
+                }
+            } catch (error) {
+                console.log(`Could not fetch ${symbol}/${pair} from ${exchange}`);
+            }
+        }
+        
+        // Sort by volume
+        exchangeData.sort((a, b) => b.volume - a.volume);
+        
+        return exchangeData;
+    } catch (error) {
+        throw new Error(`Could not fetch exchange data: ${error.message}`);
+    }
+}
+// ... existing code ...
+
+function initializeTheme() {
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.theme === currentTheme);
+    });
+
+    const opacity = getComputedStyle(document.documentElement).getPropertyValue('--opacity');
+    document.body.style.opacity = opacity;
+}
+
+function switchTheme(theme) {
+    currentTheme = theme;
+    console.log("Switching to theme:", theme);
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.theme === theme);
+    });
+    ipcRenderer.send('set-theme', theme);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initializeTheme();
     
-//     // Try more specialized sources for rare pairs
-//     const result = await trySpecialSources(symbol, pair);
-//     if (result) {
-//         return result;
-//     }
-    
-//     // Try CryptoCompare as fallback
-//     const ccResult = await tryCryptoCompare(symbol, pair);
-//     if (ccResult) {
-//         return ccResult;
-//     }
-    
-//     // Return null if all exchanges fail
-//     return null;
-// }
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            switchTheme(btn.dataset.theme);
+        });
+    });
+});
 
 ipcRenderer.on('refresh-data', () => {
     console.log("Received refresh command from tray");
@@ -316,7 +293,7 @@ async function fetchPriceWithWaterfall(symbol, pair) {
                 
                 // Cache the result
                 priceCache[cacheKey] = {
-                    price: result.price,
+                    price,
                     change: result.change || 0,
                     volume: result.volume || 0,
                     source: exchange,
@@ -1992,7 +1969,7 @@ function refreshPriceDisplay() {
             if (item) {
                 const priceElement = item.querySelector('.crypto-price');
                 if (priceElement) {
-                    priceElement.textContent = formatPrice(price);
+                    priceElement.textContent = `$`+ formatPrice(price);
                 }
             }
         }
@@ -2214,7 +2191,6 @@ function refreshCryptoList() {
     
     // Create placeholder items while loading
     trackedCryptos.forEach(crypto => {
-        // Check if this is a combined symbol with pair
         let symbol, pair;
         
         if (crypto.includes('/')) {
@@ -2223,8 +2199,8 @@ function refreshCryptoList() {
             symbol = crypto;
             pair = currentPair;
         }
-        
-        const price = lastPrices[`${symbol}/${pair}`] || '...';
+        const coin = cryptoList[symbol] || fallbackCoins[symbol];
+        const price = lastPrices[`${symbol}/${pair}`] || '...';        
         
         // Create the container with item and chart area
         const container = document.createElement('div');
@@ -2235,16 +2211,24 @@ function refreshCryptoList() {
         item.className = 'crypto-item';
         item.dataset.symbol = symbol;
         item.dataset.pair = pair;
+        let imgUrl = 'https://via.placeholder.com/24';
+        if (coin.ImageUrl) {
+            imgUrl = `https://www.cryptocompare.com${coin.ImageUrl}`;
+        }
         
         // Add HTML content
+        console.log(symbol, pair ,"priceCache here i sright?", priceCache);
+        
         item.innerHTML = `
+            <img src="${imgUrl}" class="coin-icon">
             <div class="crypto-info">
-                <div class="crypto-name">${symbol}/${pair}</div>
-                <div class="crypto-change">--</div>
+                <div class="crypto-source"></div>
+                <div class="crypto-name"><strong>${symbol}</strong>/${pair}</div>
                 <div class="crypto-volume"></div>
             </div>
-            <div class="crypto-price">${price}</div>
-            <button class="btn remove" data-symbol="${symbol}" data-pair="${pair}">×</button>
+            <div class="crypto-price">$ ${price}</div>
+            <div class="crypto-change">--</div>
+            <button class="btn remove" data-symbol="${symbol}" data-pair="${pair}" style="position: absolute; top: 1px; right: 1px;">×</button>
         `;
         
         // Add click event to show chart
@@ -2947,7 +2931,7 @@ function updateCryptoPrice(cryptoKey, price, changePercent, volume, source) {
     // Update price display
     const priceElement = cryptoElement.querySelector('.crypto-price');
     if (priceElement) {
-        priceElement.textContent = formatPrice(price);
+        priceElement.textContent = `$` + formatPrice(price);
     }
     
     // Update change percentage
@@ -3967,62 +3951,62 @@ function applyDarkTheme() {
     styleTag.innerHTML = `
         /* Dark Theme Styles */
         body {
-            background-color: #000000;
-            color: #e0e0e0;
+            background-color: var(--bg-color) !important; /* Use !important if necessary */
+            color: var(--text-color) !important;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
         .widget-container {
-            background-color: #000000;
-            border: 1px solid #333333;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-            color: #e0e0e0;
+            color: var(--text-color);
             border-radius: 8px;
         }
         
         .header-bar {
-            background: linear-gradient(to right, #121212, #1a1a1a);
-            border-bottom: 1px solid #333333;
+            background: var(--header-bg);
+            border-bottom: 1px solid var(--border-color);
         }
         
         button {
-            background-color: #1a1a1a;
-            color: #e0e0e0;
-            border: 1px solid #333333;
+            background-color: var(--btn-bg);
+            color: var(--btn-color);
+            border: 1px solid var(--border-color);
         }
         
         button:hover {
-            background-color: #252525;
+            background-color: var(--item-hover);
         }
         
         button.active {
-            background-color: #0062cc;
+            background-color: var(--accent-gradient);
             color: white;
         }
         
         /* Crypto items */
         .crypto-item {
-            background-color: #121212;
-            border: 1px solid #2a2a2a;
+            background-color: var(--item-bg);
+            border: 1px solid var(--border-color);
             transition: all 0.2s ease;
         }
         
         .crypto-item:hover {
-            background-color: #1a1a1a;
-            border-color: #3a3a3a;
+            background-color: var(--item-hover);
+            border-color: var(--border-color);
         }
         
         .crypto-item.active {
-            background-color: #1a1a1a;
-            border-color: #0062cc;
+            background-color: var(--item-hover);
+            border-color: var(--accent-gradient);
         }
         
         .crypto-name {
-            color: #e0e0e0;
+            color: var(--text-color);
         }
         
         .crypto-volume {
-            color: #888888;
+            color: var(--text-color);
             font-size: 0.8em;
         }
         
@@ -4032,54 +4016,54 @@ function applyDarkTheme() {
         }
         
         .crypto-change.up {
-            color: #4caf50;
+            color: var(--primary-gradient);
         }
         
         .crypto-change.down {
-            color: #f44336;
+            color: var(--accent-gradient);
         }
         
         /* Charts */
         .chart-area {
-            background-color: #121212;
-            border: 1px solid #2a2a2a;
+            background-color: var(--item-bg);
+            border: 1px solid var(--border-color);
         }
         
         .chart-header {
-            background-color: #1a1a1a;
-            border-bottom: 1px solid #333333;
+            background-color: var(--header-bg);
+            border-bottom: 1px solid var(--border-color);
         }
         
         /* Modal */
         .modal-content {
-            background-color: #121212;
-            border: 1px solid #333333;
+            background-color: var(--item-bg);
+            border: 1px solid var(--border-color);
         }
         
         .modal-header {
-            background-color: #1a1a1a;
-            border-bottom: 1px solid #333333;
+            background-color: var(--header-bg);
+            border-bottom: 1px solid var(--border-color);
         }
         
         /* Search */
         .search-input {
-            background-color: #1a1a1a;
-            border: 1px solid #333333;
-            color: #e0e0e0;
+            background-color: var(--item-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
         }
         
         .search-item {
-            background-color: #1a1a1a;
-            border-bottom: 1px solid #333333;
+            background-color: var(--item-bg);
+            border-bottom: 1px solid var(--border-color);
         }
         
         .search-item:hover {
-            background-color: #252525;
+            background-color: var(--item-hover);
         }
         
         /* Sort controls */
         .sort-controls {
-            background-color: #0a0a0a;
+            background-color: var(--item-bg);
             padding: 5px 10px;
             margin-bottom: 10px;
             border-radius: 5px;
@@ -4091,7 +4075,7 @@ function applyDarkTheme() {
         .sort-label {
             margin-right: 8px;
             font-size: 0.9em;
-            color: #888888;
+            color: var(--text-color);
         }
         
         .sort-buttons {
@@ -4104,34 +4088,67 @@ function applyDarkTheme() {
             padding: 3px 8px;
             font-size: 0.8em;
             border-radius: 4px;
-            background-color: #1a1a1a;
-            border: 1px solid #333333;
-            color: #e0e0e0;
+            background-color: var(--item-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
             cursor: pointer;
             transition: all 0.2s ease;
         }
         
         .sort-btn:hover {
-            background-color: #252525;
+            background-color: var(--item-hover);
         }
         
         .sort-btn.active {
-            background-color: #0062cc;
+            background-color: var(--accent-gradient);
             color: white;
         }
         
         /* Settings panel */
         .settings-panel {
-            background-color: #121212;
-            border: 1px solid #333333;
+            background-color: var(--item-bg);
+            border: 1px solid var(--border-color);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
         }
         
         /* Chart theming */
         canvas.price-chart {
-            background-color: #121212;
+            background-color: var(--item-bg);
         }
-    `;
     
-    document.head.appendChild(styleTag);
+    document.head.appendChild(styleTag);`
 }
+
+// Function to update the taskbar icon based on coin state
+function updateTaskbarIcon(coinState) {
+    let iconPath;
+
+    // Determine the icon based on the coin state
+    switch (coinState) {
+        case 'up':
+            iconPath = 'path/to/icon-up.png'; // Path to the icon for price increase
+            break;
+        case 'down':
+            iconPath = 'path/to/icon-down.png'; // Path to the icon for price decrease
+            break;
+        case 'stable':
+            iconPath = 'path/to/icon-stable.png'; // Path to the icon for stable price
+            break;
+        default:
+            iconPath = 'path/to/default-icon.png'; // Default icon
+            break;
+    }
+
+    // Update the taskbar icon
+    const { app } = require('electron');
+    const mainWindow = app.mainWindow; // Reference to your main window
+    mainWindow.setOverlayIcon(iconPath, `Coin is ${coinState}`);
+}
+
+// Example usage: Call this function whenever the coin state changes
+function onCoinStateChange(newState) {
+    updateTaskbarIcon(newState);
+}
+
+// Call this function with the appropriate state based on your logic
+onCoinStateChange('up'); // Example: when the coin price goes up

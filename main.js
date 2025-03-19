@@ -14,7 +14,8 @@ let preferences = {
   decimalPlaces: 'auto',
   cryptos: ['BTC', 'ETH', 'SOL'],
   pair: 'USDT',
-  minimizeToTray: true  // Default to true
+  minimizeToTray: true,
+  theme: 'dark'
 };
 
 const prefsPath = path.join(app.getPath('userData'), 'preferences.json');
@@ -264,6 +265,12 @@ ipcMain.on('show-window', () => {
   if (mainWindow && !mainWindow.isVisible()) {
     mainWindow.show();
   }
+});
+
+// Add to your existing IPC handlers
+ipcMain.on('set-theme', (event, theme) => {
+  preferences.theme = theme;
+  savePreferences();
 });
 
 // Hide the window

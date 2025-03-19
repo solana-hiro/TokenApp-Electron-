@@ -10,8 +10,10 @@
             --accent-gradient: linear-gradient(135deg, #13B0F5, #E70FAA);
             --glass-bg: rgba(13, 14, 20, 0.8);
             --glass-border: rgba(255, 255, 255, 0.1);
+            --pair-option-color: rgba(255, 255, 255, 0.6);
+            --pair-select-option-bg: rgba(255, 255, 255, 0.1);
+            --pair-select-option-border: 1px solid rgba(255, 255, 255, 0.2);
         }
-        
         * {
             margin: 0;
             padding: 0;
@@ -19,17 +21,53 @@
             user-select: none;
         }
         
+        [data-theme="light"] {
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --border-color: #e0e0e0;
+            --header-bg: #f5f5f5;
+            --item-hover: #f0f0f0;
+            --btn-bg: #e0e0e0;
+            --btn-color: #333333;
+            --glass-bg: rgba(255, 255, 255, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --opacity: 1; /* Set initial opacity for light theme */
+            --pair-option-color: rgba(0, 0, 0, 0.6);
+            --pair-select-option-bg: rgba(0, 0, 0, 0.1);
+            --pair-select-option-border: 1px solid rgba(0, 0, 0, 0.2);
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #000000;
+            --text-color: #e0e0e0;
+            --border-color: #333333;
+            --header-bg: #121212;
+            --item-hover: #1a1a1a;
+            --btn-bg: #1a1a1a;
+            --btn-color: #e0e0e0;
+            --glass-bg: rgba(0, 0, 0, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --opacity: 0.9; /* Set initial opacity for dark theme */
+            --pair-option-color: rgba(255, 255, 255, 0.6);
+            --pair-select-option-bg: rgba(255, 255, 255, 0.1);
+            --pair-select-option-border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: transparent;
-            color: white;
+            background-color: var(--bg-color) !important;
+            color: var(--text-color) !important;
             overflow: hidden;
             border-radius: 12px;
+            opacity: var(--opacity);
         }
         
         .widget-container {
             width: 100%;
             height: 100vh;
+            background-color: var(--bg-color);
+            border-color: var(--border-color);
             background: var(--glass-bg);
             backdrop-filter: blur(10px);
             border: 1px solid var(--glass-border);
@@ -58,9 +96,9 @@
         }
         
         .btn {
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--btn-bg); 
             border: none;
-            color: white;
+            color: var(--text-color);
             width: 24px;
             height: 24px;
             border-radius: 50%;
@@ -73,16 +111,11 @@
         }
         
         .btn:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--item-hover);
         }
         
         .btn.close:hover {
-            background: rgba(255, 0, 0, 0.7);
-        }
-        
-        .btn.add {
-            background: var(--accent-gradient);
-            font-weight: bold;
+            background: var(--item-hover);
         }
         
         .crypto-list {
@@ -94,7 +127,7 @@
         .crypto-item {
             padding: 10px;
             margin-bottom: 8px;
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--item-hover);
             border-radius: 8px;
             display: flex;
             justify-content: space-between;
@@ -103,7 +136,7 @@
         }
         
         .crypto-item:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--glass-bg);
         }
         
         .crypto-name {
@@ -130,6 +163,14 @@
             border-radius: 4px;
             font-weight: bold;
         }
+
+        .crypto-change.up {
+            color: #30DB5B;
+        }
+        
+        .crypto-change.down {
+            color: #FF5252;
+        }
         
         .positive {
             background: rgba(40, 167, 69, 0.2);
@@ -151,16 +192,16 @@
         .pair-btn {
             padding: 5px 12px;
             border-radius: 12px;
-            background: rgba(255, 255, 255, 0.05);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--btn-bg);
+            color: var(--text-color);
+        border: 1px solid var(--glass-border);
             cursor: pointer;
             font-size: 12px;
             transition: all 0.2s;
         }
         
         .pair-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--item-hover);
         }
         
         .pair-btn.active {
@@ -185,15 +226,15 @@
             width: 100%;
             padding: 10px;
             margin-bottom: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--btn-bg);
+            border: 1px solid var(--glass-border);
             border-radius: 8px;
-            color: white;
+            color: var(--text-color);
         }
         
         .search-input:focus {
             outline: none;
-            border-color: rgba(255, 255, 255, 0.3);
+            border-color: var(--border-color);
         }
         
         .search-results {
@@ -214,7 +255,7 @@
 }
 
 .search-item:hover, .search-item:focus {
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--search-item-hover);
     outline: none;
 }
 
@@ -247,7 +288,7 @@
     padding: 12px;
     text-align: center;
     font-size: 14px;
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--text-color);
 }
 
 /* Modal overlay for pair selection */
@@ -257,7 +298,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
+    background: var(--modal-overlay-bg);
     backdrop-filter: blur(5px);
     display: flex;
     align-items: center;
@@ -631,25 +672,25 @@
 .search-input {
     width: 100%;
     padding: 12px 15px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: var(--search-input-bg);
+    border: 1px solid var(--search-input-border);
     border-radius: 8px;
-    color: white;
+    color: var(--search-input-color);
     font-size: 15px;
     margin-bottom: 15px;
 }
 
 .search-input:focus {
     outline: none;
-    border-color: rgba(255, 255, 255, 0.4);
-    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+    border-color: var(--search-input-focus-border);
+    box-shadow: 0 0 0 2px var(--search-input-focus-shadow);
 }
 
 .search-status {
     padding: 5px 0;
     margin-bottom: 10px;
     font-size: 13px;
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--search-status-color);
 }
 
 .search-results {
@@ -662,13 +703,13 @@
     display: flex;
     padding: 10px 12px;
     cursor: pointer;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--search-item-bg);
     border-radius: 8px;
     transition: all 0.2s;
 }
 
 .search-item:hover, .search-item:focus {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--search-item-hover);
     outline: none;
 }
 
@@ -682,7 +723,7 @@
 .search-loading, .search-no-results {
     padding: 20px 0;
     text-align: center;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--search-loading-color);
     font-size: 14px;
 }
 
@@ -693,18 +734,18 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
+    background: var(--close-search-modal-bg);
+    color: var(--close-search-modal-color);
     font-size: 14px;
     cursor: pointer;
 }
 
 .btn.close-search-modal:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--close-search-modal-hover-bg);
 }
 
 .search-result-item {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--search-result-item-bg);
     border-radius: 8px;
     padding: 12px;
     margin-bottom: 10px;
@@ -724,8 +765,9 @@
     margin-top: 8px;
 }
 
+
 .pair-option-loading, .pair-option-error {
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--pair-option-color);
     font-size: 13px;
     padding: 5px 0;
     width: 100%;
@@ -733,8 +775,8 @@
 }
 
 .pair-select-option {
-    background: linear-gradient(45deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.15));
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: var(--pair-select-option-bg);
+    border: var(--pair-select-option-border);
     border-radius: 6px;
     padding: 6px 12px;
     display: flex;
@@ -747,7 +789,7 @@
 }
 
 .pair-select-option:hover {
-    background: linear-gradient(45deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.2));
+    background: rgba(255, 255, 255, 0.15) var(--pair-select-option-hover);
     transform: translateY(-2px);
 }
 
@@ -755,11 +797,10 @@
     font-weight: bold;
     font-size: 13px;
 }
-
 .pair-price {
     margin-top: 4px;
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--text-color);
 }
 
 /* Chart container styles */
@@ -769,10 +810,10 @@
     right: 0;
     bottom: 0;
     height: 150px;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--glass-bg);
     backdrop-filter: blur(5px);
     padding: 15px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid var(--glass-border);
     transform: translateY(100%);
     transition: transform 0.3s ease;
 }
@@ -796,9 +837,16 @@
 .chart-close {
     background: none;
     border: none;
-    color: white;
     cursor: pointer;
     font-size: 16px;
+}
+
+[data-theme="light"] .chart-close {
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .chart-close {
+    color: var(--text-color);
 }
 
 .price-chart {
@@ -822,20 +870,49 @@
     border-bottom: 1px solid var(--glass-border);
 }
 
+.btn.hamburger {
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    color: var(--hamburger-color);
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+}
+
+.btn.hamburger:hover {
+    color: white;
+}
+
+.title-text {
+    color: #30DB5B;  /* Green color for the text */
+    margin: 0;
+    font-size: 18px;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
 .btn.add {
     width: auto;
     height: auto;
-    padding: 8px 12px;
-    background: var(--accent-gradient);
-    border-radius: 12px;
-    font-size: 14px;
     display: flex;
+    color: #4da089;
     align-items: center;
+    padding: 0px 10px;
     gap: 6px;
 }
 
+.btn.add:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(46, 204, 113, 0.3);
+}
 .btn.add span {
-    font-size: 16px;
+    font-size: 35px;
 }
         
         @keyframes flash-green {
@@ -852,7 +929,7 @@
         
         /* Add this to your CSS */
 .pair-select-option {
-    background: linear-gradient(45deg, rgba(30, 30, 30, 0.8), rgba(40, 40, 40, 0.8));
+    background: var(--pair-select-option-bg);
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 8px;
     padding: 10px 15px;
@@ -867,16 +944,16 @@
 }
 
 .pair-select-option:hover {
-    background: linear-gradient(45deg, rgba(40, 40, 40, 0.9), rgba(50, 50, 50, 0.9));
+    background: var(--pair-select-option-hover);
     transform: translateY(-2px);
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
 .pair-select-option.added {
-    background: linear-gradient(45deg, rgba(0, 80, 0, 0.8), rgba(0, 100, 0, 0.8));
-    border-color: rgba(100, 255, 100, 0.3);
+    background: var(--pair-select-option-added);
+    border-color: var(--pair-select-option-border-added);
 }
-
+/* Light theme */
 .added-badge {
     position: absolute;
     top: -8px;
@@ -891,6 +968,12 @@
     animation: pop 0.3s ease-out;
 }
 
+/* Dark theme */
+[data-theme="dark"] .added-badge {
+    background: #008000; /* Adjusted for dark theme */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* Adjusted for dark theme */
+}
+
 @keyframes pop {
     0% { transform: scale(0); }
     70% { transform: scale(1.2); }
@@ -901,11 +984,12 @@
     font-weight: bold;
     font-size: 14px;
     margin-bottom: 4px;
+    color: var(--text-color);
 }
 
 .pair-price {
     font-size: 13px;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--text-color);
 }
 
 /* Embedded chart styles */
@@ -913,7 +997,7 @@
     height: 0;
     overflow: hidden;
     transition: height 0.3s ease;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--chart-area-bg);
     border-radius: 0 0 8px 8px;
     margin-top: -5px;
     position: relative;
@@ -930,17 +1014,16 @@
     align-items: center;
     padding: 6px 10px;
 }
-
 .chart-title {
     font-size: 12px;
     font-weight: bold;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--text-color);
 }
 
 .chart-close {
     background: none;
     border: none;
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--text-color);
     cursor: pointer;
     font-size: 16px;
     padding: 0 4px;
@@ -957,17 +1040,24 @@
     position: relative;
 }
 
+.crypto-item img {
+    width: 40px;
+    height: 40px;
+    margin-right: 10px;
+    border-radius: 50%;
+}
+
 .crypto-item:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--item-hover);
 }
 
 .crypto-item.active {
-    background: rgba(70, 130, 180, 0.2);
-    border-color: rgba(70, 130, 180, 0.4);
+    background: var(--active-item-bg);
+    border-color: var(--active-item-border);
 }
 
 .crypto-volume {
-    color: #888888;
+    color: var(--text-color);
     font-size: 0.8em;
     margin-top: 2px;
 }
@@ -978,61 +1068,65 @@
     align-items: flex-start;
     flex: 1;
 }
+[data-theme="light"] .exchange-table {
+    color: #333333;
+}
+
+[data-theme="dark"] .exchange-table {
+    color: #e0e0e0;
+}
 
 .exchange-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 15px;
-        color: #e0e0e0;
-    }
-    
-    .exchange-table th, .exchange-table td {
-        padding: 8px 12px;
-        text-align: left;
-        border-bottom: 1px solid #333;
-    }
-    
-    .exchange-table th {
-        background-color: #1a1a1a;
-        color: #aaa;
-    }
-    
-    .exchange-table th.sortable {
-        cursor: pointer;
-    }
-    
-    .exchange-table th.sortable:hover {
-        color: white;
-    }
-    
-    .exchange-table th.active {
-        color: white;
-    }
-    
-    .exchange-table tbody tr:hover {
-        background-color: #1e1e1e;
-    }
-    
-    .comparison-loading {
-        text-align: center;
-        padding: 20px;
-        color: #888;
-    }
-    
-    .add-pair-btn {
-        background: #1e88e5;
-        color: white;
-        border: none;
-        padding: 4px 8px;
-        border-radius: 3px;
-        cursor: pointer;
-    }
-    
-    .add-pair-btn:hover {
-        background: #1976d2;
-    }
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
 
-    .modal {
+.exchange-table th, .exchange-table td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.exchange-table th {
+    background-color: var(--glass-bg);
+}
+.exchange-table th.sortable {
+    cursor: pointer;
+}
+
+.exchange-table th.sortable:hover {
+    color: var(--text-color);
+}
+
+.exchange-table th.active {
+    color: var(--text-color);
+}
+    
+.exchange-table tbody tr:hover {
+    background-color: var(--item-hover);
+}
+    
+.comparison-loading {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-color);
+}
+    
+.add-pair-btn {
+    background: var(--btn-bg);
+    color: var(--btn-color);
+    border: none;
+    padding: 4px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+}
+    
+.add-pair-btn:hover {
+    background: var(--btn-hover);
+}
+    
+.modal {
     display: none;
     position: fixed;
     z-index: 1000;
@@ -1043,344 +1137,389 @@
     overflow: auto;
     background-color: rgba(0,0,0,0.7);
 }
+    :root {
+        --modal-bg: #121212;
+        --modal-header-bg: #1a1a1a;
+        --modal-header-color: white;
+        --close-modal-color: #aaa;
+    }
 
-.modal-content {
-    background-color: #121212;
-    margin: 10% auto;
-    padding: 0;
-    border: 1px solid #333;
-    width: 80%;
-    max-width: 700px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
-    border-radius: 6px;
-}
+    .modal-content {
+        background-color: var(--modal-bg);
+        margin: 10% auto;
+        padding: 0;
+        border: 1px solid #333;
+        width: 80%;
+        max-width: 700px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+        border-radius: 6px;
+    }
 
-.modal-header {
-    padding: 12px 16px;
-    background-color: #1a1a1a;
-    color: white;
-    border-bottom: 1px solid #333;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-radius: 6px 6px 0 0;
-}
+    .modal-header {
+        padding: 12px 16px;
+        background-color: var(--modal-header-bg);
+        color: var(--modal-header-color);
+        border-bottom: 1px solid #333;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-radius: 6px 6px 0 0;
+    }
 
-.modal-header h3 {
-    margin: 0;
-    font-size: 1.2rem;
-}
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.2rem;
+    }
 
-.close-modal {
-    color: #aaa;
-    font-size: 24px;
-    font-weight: bold;
-    cursor: pointer;
-    background: none;
-    border: none;
-    padding: 0;
-}
+    .close-modal {
+        color: var(--close-modal-color);
+        font-size: 24px;
+        font-weight: bold;
+        cursor: pointer;
+        background: none;
+        border: none;
+        padding: 0;
+    }
 
-.close-modal:hover {
-    color: white;
-}
+    .close-modal:hover {
+        color: white;
+    }
 
-.modal-body {
-    padding: 16px;
-    max-height: 70vh;
-    overflow-y: auto;
-}
+    .modal-body {
+        padding: 16px;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
 
-.crypto-actions {
-    display: flex;
-    align-items: center;
-}
+    .crypto-actions {
+        display: flex;
+        align-items: center;
+    }
 
-/* Add this to your widget.html styles section */
-.exchange-comparison {
-    margin-top: 20px;
-}
+    /* Add this to your widget.html styles section */
+    .exchange-comparison {
+        margin-top: 20px;
+    }
+    /* Add this to your widget.html styles section */
+    .exchange-comparison {
+        margin-top: 20px;
+    }
 
-.exchange-comparison-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
+    .exchange-comparison-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--glass-border);
+    }
 
-.exchange-comparison-header h3 {
-    margin: 0;
-    font-size: 16px;
-}
+    .exchange-comparison-header h3 {
+        margin: 0;
+        font-size: 16px;
+        color: var(--text-color);
+    }
 
-.btn.back-btn {
-    padding: 5px 10px;
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-}
+    .btn.back-btn {
+        padding: 5px 10px;
+        background: var(--btn-bg);
+        color: var(--btn-color);
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+    }
 
-.btn.back-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-}
+    .btn.back-btn:hover {
+        background: var(--btn-hover);
+    }
 
-.search-item {
-    padding: 10px;
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    border-radius: 6px;
-    margin-bottom: 6px;
-    transition: background 0.2s;
-}
+    .search-item {
+        padding: 10px;
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        border-radius: 6px;
+        margin-bottom: 6px;
+        transition: background 0.2s;
+    }
+    .search-item:hover {
+        background: var(--item-hover);
+    }
 
-.search-item:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
+    .search-item-icon {
+        width: 30px;
+        height: 30px;
+        margin-right: 12px;
+        border-radius: 50%;
+        object-fit: cover;
+        background: var(--item-icon-bg);
+    }
 
-.search-item-icon {
-    width: 30px;
-    height: 30px;
-    margin-right: 12px;
-    border-radius: 50%;
-    object-fit: cover;
-    background: rgba(255, 255, 255, 0.1);
-}
+    /* Add this to your CSS (can be added in applyDarkTheme function) */
+    .search-result-item {
+        background-color: var(--search-result-item-bg);
+        padding: 12px;
+        margin-bottom: 12px;
+        border-radius: 6px;
+        border: 1px solid var(--search-result-item-border);
+    }
 
-/* Add this to your CSS (can be added in applyDarkTheme function) */
-.search-result-item {
-    background-color: #121212;
-    padding: 12px;
-    margin-bottom: 12px;
-    border-radius: 6px;
-    border: 1px solid #333;
-}
+    .search-item-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 12px;
+    }
 
-.search-item-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 12px;
-}
+    .coin-icon {
+        width: 24px;
+        height: 24px;
+        margin-right: 10px;
+        border-radius: 50%;
+    }
 
-.coin-icon {
-    width: 24px;
-    height: 24px;
-    margin-right: 10px;
-    border-radius: 50%;
-}
+    .coin-symbol {
+        font-weight: bold;
+        font-size: 16px;
+    }
 
-.coin-symbol {
-    font-weight: bold;
-    font-size: 16px;
-}
+    .coin-name {
+        font-size: 12px;
+        color: var(--coin-name-color);
+    }
 
-.coin-name {
-    font-size: 12px;
-    color: #aaa;
-}
+    .exchange-comparison {
+        margin-top: 10px;
+    }
 
-.exchange-comparison {
-    margin-top: 10px;
-}
+    .exchange-comparison-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    .exchange-comparison-header h3 {
+        margin: 0;
+        font-size: 14px;
+        color: var(--text-color);
+    }
 
-.exchange-comparison-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
+    .exchange-items {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
 
-.exchange-comparison-header h3 {
-    margin: 0;
-    font-size: 14px;
-    color: #bbb;
-}
+    .exchange-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px;
+        border-radius: 4px;
+        background-color: var(--item-hover);
+        position: relative;
+    }
 
-.exchange-items {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
+    .exchange-item.top-volume {
+        background-color: rgba(54, 162, 235, 0.15);
+        border: 1px solid rgba(54, 162, 235, 0.3);
+    }
 
-.exchange-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px;
-    border-radius: 4px;
-    background-color: #1a1a1a;
-    position: relative;
-}
+    .exchange-item-left {
+        flex: 1;
+    }
 
-.exchange-item.top-volume {
-    background-color: rgba(54, 162, 235, 0.15);
-    border: 1px solid rgba(54, 162, 235, 0.3);
-}
+    .exchange-name {
+        font-size: 14px;
+        font-weight: 500;
+    }
 
-.exchange-item-left {
-    flex: 1;
-}
+    .exchange-pair {
+        font-size: 12px;
+        color: var(--text-color);
+    }
 
-.exchange-name {
-    font-size: 14px;
-    font-weight: 500;
-}
+    .exchange-item-right {
+        text-align: right;
+        margin-right: 10px;
+    }
 
-.exchange-pair {
-    font-size: 12px;
-    color: #aaa;
-}
+    .exchange-volume {
+        font-size: 14px;
+        color: var(--text-color);
+    }
 
-.exchange-item-right {
-    text-align: right;
-    margin-right: 10px;
-}
+    .exchange-price {
+        font-size: 12px;
+        color: var(--text-color);
+    }
 
-.exchange-volume {
-    font-size: 14px;
-    color: #4caf50;
-}
+    .add-exchange-btn {
+        background-color: var(--btn-bg);
+        color: var(--btn-color);
+        border: none;
+        border-radius: 4px;
+        padding: 4px 10px;
+        font-size: 12px;
+        cursor: pointer;
+        margin-left: 10px;
+    }
 
-.exchange-price {
-    font-size: 12px;
-    color: #aaa;
-}
+    .add-exchange-btn:hover {
+        background-color: var(--accent-gradient);
+    }
 
-.add-exchange-btn {
-    background-color: #1e88e5;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 4px 10px;
-    font-size: 12px;
-    cursor: pointer;
-    margin-left: 10px;
-}
+    .add-exchange-btn.added {
+        background-color: var(--accent-gradient);
+    }
 
-.add-exchange-btn:hover {
-    background-color: #1976d2;
-}
+    .loading-exchanges, .no-exchanges, .exchange-error {
+        padding: 10px;
+        text-align: center;
+        color: var(--text-color);
+        font-style: italic;
+    }
 
-.add-exchange-btn.added {
-    background-color: #43a047;
-}
+    .exchange-error {
+        color: var(--text-color);
+    }
 
-.loading-exchanges, .no-exchanges, .exchange-error {
-    padding: 10px;
-    text-align: center;
-    color: #888;
-    font-style: italic;
-}
+    .search-item-details {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+    }
 
-.exchange-error {
-    color: #f44336;
-}
+    .search-item-symbol {
+        font-weight: bold;
+        font-size: 16px;
+    }
 
-.search-item-details {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-}
+    .search-item-name {
+        font-size: 13px;
+        opacity: var(--opacity);
+    }
 
-.search-item-symbol {
-    font-weight: bold;
-    font-size: 16px;
-}
+    .exchange-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
 
-.search-item-name {
-    font-size: 13px;
-    opacity: 0.7;
-}
+    .exchange-table th, .exchange-table td {
+        padding: 8px 12px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+    }
 
-.exchange-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 10px;
-}
+    .exchange-table th {
+        color: var(--text-color);
+        font-size: 13px;
+        font-weight: 500;
+    }
 
-.exchange-table th, .exchange-table td {
-    padding: 8px 12px;
-    text-align: left;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
+    .exchange-table td {
+        font-size: 14px;
+    }
 
-.exchange-table th {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 13px;
-    font-weight: 500;
-}
+    .add-exchange-btn {
+        background: var(--accent-gradient);
+        color: var(--btn-color);
+        border: none;
+        border-radius: 4px;
+        padding: 5px 10px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
 
-.exchange-table td {
-    font-size: 14px;
-}
+    .add-exchange-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    }
 
-.add-exchange-btn {
-    background: linear-gradient(45deg, #2196F3, #21CBF3);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 5px 10px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
+    .comparison-loading {
+        text-align: center;
+        padding: 20px;
+        color: var(--text-color);
+        font-size: 14px;
+    }
 
-.add-exchange-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-}
+    .btn.compare-exchanges {
+        background-color: transparent;
+        color: var(--text-color);
+        border: none;
+        padding: 2px 5px;
+        margin-right: 5px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
 
-.comparison-loading {
-    text-align: center;
-    padding: 20px;
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 14px;
-}
+    .btn.compare-exchanges:hover {
+        color: var(--accent-gradient);
+    }
 
-.btn.compare-exchanges {
-    background-color: transparent;
-    color: #888;
-    border: none;
-    padding: 2px 5px;
-    margin-right: 5px;
-    font-size: 16px;
-    cursor: pointer;
-    transition: color 0.2s;
-}
+    .chart-area {
+        height: 0;
+        overflow: hidden;
+        transition: height 0.3s ease;
+        background: var(--glass-bg);
+        border-radius: 0 0 8px 8px;
+        margin-top: -5px;
+        position: relative;
+    }
 
-.btn.compare-exchanges:hover {
-    color: white;
-}
+    .chart-area.visible {
+        height: 180px; /* Increased from 150px to ensure full visibility */
+        margin-bottom: 10px;
+    }
 
-.chart-area {
-    height: 0;
-    overflow: hidden;
-    transition: height 0.3s ease;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 0 0 8px 8px;
-    margin-top: -5px;
-    position: relative;
-}
+    .chart-body {
+        height: 150px; /* Increased from 120px */
+        padding: 0 10px 10px 10px; /* Added bottom padding */
+    }
 
-.chart-area.visible {
-    height: 180px; /* Increased from 150px to ensure full visibility */
-    margin-bottom: 10px;
-}
+    canvas.price-chart {
+        width: 100% !important;
+        height: 100% !important;
+    }
 
-.chart-body {
-    height: 150px; /* Increased from 120px */
-    padding: 0 10px 10px 10px; /* Added bottom padding */
-}
+    /* Theme Switcher Styles */
+    .theme-switcher {
+        display: flex;
+        gap: 10px;
+        width: 100%;
+    }
 
-canvas.price-chart {
-    width: 100% !important;
-    height: 100% !important;
-}
+    .theme-btn {
+        flex: 1;
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
+        background: var(--glass-bg);
+        color: var(--text-color);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: all 0.2s;
+    }
+
+    .theme-btn:hover {
+        background: var(--glass-bg);
+    }
+
+    .theme-btn.active {
+        background: var(--accent-gradient);
+        border-color: var(--accent-gradient);
+    }
+
+    .theme-icon {
+        font-size: 14px;
+    }
+
         /* Custom scrollbar */
         ::-webkit-scrollbar {
             width: 6px;
@@ -1409,12 +1548,14 @@ canvas.price-chart {
         </div>
         
         
-<div class="crypto-header">
-    <h3>Your Cryptos</h3>
-    <button class="btn add" id="add-crypto">
-        <span>+</span> Add
-    </button>
-</div>
+        <div class="crypto-header">
+            <button class="btn hamburger" id="menu-btn">☰</button>
+            <h3 class="title-text">Coin View</h3>
+            <button class="btn add" id="add-crypto">
+                <span>+</span>
+            </button>
+        </div>
+
         <div class="crypto-list" id="crypto-list">
             <!-- Crypto items will be dynamically added here -->
         </div>
@@ -1427,10 +1568,8 @@ canvas.price-chart {
             <div class="search-body">
                 <input type="text" class="search-input" id="search-input" placeholder="Search for cryptocurrency...">
                 <div class="search-status" id="search-status">Enter at least 2 characters to search</div>
-                
                 <div class="search-results" id="search-results"></div>
                 
-                <!-- Exchange comparison will be shown here -->
                 <div id="exchange-comparison" class="exchange-comparison" style="display: none;">
                     <div class="exchange-comparison-header">
                         <h3 id="comparison-title">Exchange Comparison</h3>
@@ -1462,7 +1601,17 @@ canvas.price-chart {
         <h3>Widget Settings</h3>
         <button class="btn close-settings" id="close-settings">×</button>
     </div>
-    
+    <div class="settings-section">
+        <label>Theme</label>
+        <div class="theme-switcher">
+            <button class="theme-btn active" data-theme="dark">
+                <span class="theme-icon">🌙</span> Dark
+            </button>
+            <button class="theme-btn" data-theme="light">
+                <span class="theme-icon">☀️</span> Light
+            </button>
+        </div>
+    </div>
     <div class="settings-section">
         <label>Opacity</label>
         <div class="slider-container">
