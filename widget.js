@@ -958,18 +958,52 @@ function addVolumeTracking() {
     };
 }
 
-// Add this function to format volume numbers
 function formatVolume(volume) {
-    if (!volume) return 'Vol: N/A';
-    
-    if (volume >= 1000000000) {
-        return `Vol: ${(volume / 1000000000).toFixed(2)}B`;
-    } else if (volume >= 1000000) {
-        return `Vol: ${(volume / 1000000).toFixed(2)}M`;
-    } else if (volume >= 1000) {
-        return `Vol: ${(volume / 1000).toFixed(2)}K`;
-    } else {
-        return `Vol: ${volume.toFixed(2)}`;
+    // Debug log
+    console.log('formatVolume input:', {
+        value: volume,
+        type: typeof volume,
+        isNumber: !isNaN(parseFloat(volume))
+    });
+
+    // Handle invalid inputs
+    if (volume === null || volume === undefined || volume === '') {
+        return '---';
+    }
+
+    try {
+        // Force conversion to number
+        const numVolume = parseFloat(String(volume).replace(/[^0-9.-]/g, ''));
+        
+        // Debug log after conversion
+        console.log('Converted volume:', numVolume);
+
+        if (isNaN(numVolume)) {
+            return '---';
+        }
+
+        // Format based on size
+        if (numVolume >= 1000000000) {
+            return `${(numVolume / 1000000000).toFixed(2)}B`;
+        } else if (numVolume >= 1000000) {
+            return `${(numVolume / 1000000).toFixed(2)}M`;
+        } else if (numVolume >= 1000) {
+            return `${(numVolume / 1000).toFixed(2)}K`;
+        } else {
+            if (numVolume < 1) {
+                return numVolume.toFixed(6);
+            } else if (numVolume < 10) {
+                return numVolume.toFixed(4);
+            } else {
+                return numVolume.toFixed(2);
+            }
+        }
+    } catch (error) {
+        console.error('Error formatting volume:', {
+            originalValue: volume,
+            error: error.message
+        });
+        return '---';
     }
 }
 
@@ -1661,18 +1695,18 @@ function setupBinanceWebSocket() {
                             if (pairInfo) {
                                 // Get price data
                                 const price = parseFloat(data.c); // Current price
-                                const priceChangePercent = parseFloat(data.P); // 24h change percent
-                                
+                                const priceChangePercent = parseFloat(data.p); // 24h change percent
+                                 
                                 // Mark this pair as supported by Binance
                                 if (!supportedPairsCache.binance) {
                                     supportedPairsCache.binance = {};
                                 }
                                 supportedPairsCache.binance[`${pairInfo.symbol}${pairInfo.binancePair}`] = true;
-                                
-                                // Update the UI with the received price
+                                 
+                                // Update the UI with the received price and volume
                                 const combinedKey = `${pairInfo.symbol}/${pairInfo.pair}`;
-                                updateCryptoPrice(combinedKey, price, priceChangePercent);
-                                
+                                updateCryptoPrice(combinedKey, price, priceChangePercent, data.q, 'binance-ws');
+                                 
                                 // Store in price cache
                                 priceCache[combinedKey] = {
                                     price,
@@ -1954,7 +1988,9 @@ function refreshCryptoList() {
             pair = currentPair;
         }
         const coin = cryptoList[symbol] || fallbackCoins[symbol];
-        const price = lastPrices[`${symbol}/${pair}`] || '...';        
+        const price = lastPrices[`${symbol}/${pair}`] || '...';
+        const cacheKey = `${symbol}/${pair}`;
+        const priceData = priceCache[cacheKey] || {};
         
         // Create the container with item and chart area
         const container = document.createElement('div');
@@ -1970,18 +2006,16 @@ function refreshCryptoList() {
             imgUrl = `https://www.cryptocompare.com${coin.ImageUrl}`;
         }
         
-        // Add HTML content
-        console.log(symbol, pair ,"priceCache here i sright?", priceCache);
-        
+        // Add HTML content with exchange and volume
         item.innerHTML = `
             <img src="${imgUrl}" class="coin-icon">
             <div class="crypto-info">
-                <div class="crypto-source"></div>
+                <div class="crypto-exchange-badge" style="display: inline-block; font-size: 0.7rem; background: rgba(0,0,0,0.1);">${(priceData.source || 'binance-ws').toUpperCase()}</div>
                 <div class="crypto-name"><strong>${symbol}</strong>/${pair}</div>
                 <div class="crypto-volume"></div>
             </div>
             <div class="crypto-price">$ ${price}</div>
-            <div class="crypto-change">--</div>
+            <div class="crypto-change">${formatChange(priceData.change || 0)}</div>
             <button class="btn remove" data-symbol="${symbol}" data-pair="${pair}" style="position: absolute; top: 1px; right: 1px;">×</button>
         `;
         
@@ -2055,24 +2089,8 @@ function refreshCryptoList() {
     setupBinanceWebSocket();
 }
 
-// Add this function to format volume numbers
-function formatVolume(volume) {
-    if (!volume) return 'N/A';
-    
-    if (volume >= 1000000000) {
-        return `${(volume / 1000000000).toFixed(2)}B`;
-    } else if (volume >= 1000000) {
-        return `${(volume / 1000000).toFixed(2)}M`;
-    } else if (volume >= 1000) {
-        return `${(volume / 1000).toFixed(2)}K`;
-    } else {
-        return volume.toFixed(2);
-    }
-}
-
 function updateCryptoPrice(cryptoKey, price, changePercent, volume, source) {
     const [symbol, pair] = cryptoKey.split('/');
-    
     // Find the DOM element for this crypto
     const cryptoElement = document.querySelector(`.crypto-item[data-symbol="${symbol}"][data-pair="${pair}"]`);
     if (!cryptoElement) return;
@@ -2099,19 +2117,30 @@ function updateCryptoPrice(cryptoKey, price, changePercent, volume, source) {
         }
     }
     
-    // Add volume display if provided
-    if (volume !== undefined && volume !== null) {
-        // Create volume element if it doesn't exist
-        if (!cryptoElement.querySelector('.crypto-volume')) {
-            const volumeEl = document.createElement('div');
-            volumeEl.className = 'crypto-volume';
-            cryptoElement.querySelector('.crypto-info').appendChild(volumeEl);
+    // Update exchange badge
+    const exchangeBadge = cryptoElement.querySelector('.crypto-exchange-badge');
+    if (exchangeBadge && source) {
+        exchangeBadge.textContent = source.toUpperCase();
+        // Add a subtle animation when exchange changes
+        exchangeBadge.style.animation = 'none';
+        exchangeBadge.offsetHeight; // Trigger reflow
+        exchangeBadge.style.animation = 'pulse 0.5s';
+    }
+    
+    // Update volume display
+    const volumeElement = cryptoElement.querySelector('.crypto-volume');
+    if (volumeElement) {
+        try {
+            const formattedVolume = formatVolume(volume);
+            volumeElement.textContent = formattedVolume;
+        } catch (e) {
+            console.error('Volume formatting error:', {
+                cryptoKey,
+                volume,
+                error: e.message
+            });
+            volumeElement.textContent = '---';
         }
-        
-        // Update volume display
-        const volumeElement = cryptoElement.querySelector('.crypto-volume');
-        volumeElement.textContent = formatVolume(volume);
-        cryptoElement.dataset.volume = volume;
     }
     
     // Store all data in price cache
