@@ -62,7 +62,7 @@ body {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
+    top: 0;
     height: 200px;
     background: var(--glass-bg);
     backdrop-filter: blur(5px);
@@ -879,43 +879,6 @@ font-size: 12px;
 color: var(--text-color);
 }
 
-/* Chart container styles */
-.chart-container {
-position: absolute;
-left: 0;
-right: 0;
-bottom: 0;
-height: 150px;
-background: var(--glass-bg);
-backdrop-filter: blur(5px);
-padding: 15px;
-border-top: 1px solid var(--glass-border);
-transform: translateY(100%);
-transition: transform 0.3s ease;
-}
-
-.chart-container.visible {
-transform: translateY(0);
-}
-
-.chart-header {
-display: flex;
-justify-content: space-between;
-align-items: center;
-margin-bottom: 10px;
-}
-
-.chart-title {
-font-size: 14px;
-font-weight: bold;
-}
-
-.chart-close {
-background: none;
-border: none;
-cursor: pointer;
-font-size: 16px;
-}
 
 [data-theme="light"] .chart-close {
 color: var(--text-color);
@@ -1079,7 +1042,7 @@ margin-top: -5px;
 position: relative;
 }
 
-.chart-area.visible {
+.chart-area {
 height: 150px;
 margin-bottom: 10px;
 }
@@ -1537,16 +1500,6 @@ color: var(--accent-gradient);
 }
 
 .chart-area {
-height: 0;
-overflow: hidden;
-transition: height 0.3s ease;
-background: var(--glass-bg);
-border-radius: 0 0 8px 8px;
-margin-top: -5px;
-position: relative;
-}
-
-.chart-area.visible {
 height: 180px; /* Increased from 150px to ensure full visibility */
 margin-bottom: 10px;
 }

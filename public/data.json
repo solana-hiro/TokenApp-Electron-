@@ -22,11 +22,5 @@
     "Symbol": "SOL",
     "ImageUrl": "/media/20560/sol.png",
     "exchange": "binance"
-  },
-  {
-    "CoinName": "ETH",
-    "Symbol": "ETH",
-    "ImageUrl": "/media/37746238/eth.png",
-    "exchange": "kucoin"
   }
 ]

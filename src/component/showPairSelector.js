@@ -35,169 +35,170 @@ function showPairSelector(symbol, coinName) {
 }
 
 // Add this function to create and display a price chart
-async function displayPriceChart(symbol, pair) {
-    console.log(`Displaying chart for ${symbol}/${pair}`);
+// async function displayPriceChart(symbol, pair) {
+//     console.log(`Displaying chart for ${symbol}/${pair}`);
     
-    // Create chart container if it doesn't exist
-    let chartContainer = document.getElementById('price-chart-container');
+//     // Create chart container if it doesn't exist
+//     let chartContainer = document.getElementById('price-chart-container');
     
-    if (!chartContainer) {
-        chartContainer = document.createElement('div');
-        chartContainer.id = 'price-chart-container';
-        chartContainer.className = 'chart-container';
-        chartContainer.innerHTML = `
-            <div class="chart-header">
-                <div class="chart-title">Loading chart...</div>
-                <button class="chart-minimize">_</button>
-                <button class="chart-close">×</button>
-            </div>
-            <canvas id="price-chart" class="price-chart"></canvas>
-        `;
+//     if (!chartContainer) {
+//         chartContainer = document.createElement('div');
+//         chartContainer.id = 'price-chart-container';
+//         chartContainer.className = 'chart-container';
         
-        document.body.appendChild(chartContainer);
+//         chartContainer.innerHTML = `
+//             <div class="chart-header">
+//                 <div class="chart-title">Loading chart...</div>
+//                 <button class="chart-minimize">_</button>
+//                 <button class="chart-close">×</button>
+//             </div>
+//             <canvas id="price-chart" class="price-chart"></canvas>
+//         `;
         
-        // Add close button event
-        chartContainer.querySelector('.chart-close').addEventListener('click', () => {
-            chartContainer.classList.remove('visible');
-        });
+//         document.body.appendChild(chartContainer);
+        
+//         // Add close button event
+//         chartContainer.querySelector('.chart-close').addEventListener('click', () => {
+//             chartContainer.classList.remove('visible');
+//         });
 
-        // Add minimize button event
-        chartContainer.querySelector('.chart-minimize').addEventListener('click', () => {
-            chartContainer.classList.toggle('minimized');
-        });
-    }
+//         // Add minimize button event
+//         chartContainer.querySelector('.chart-minimize').addEventListener('click', () => {
+//             chartContainer.classList.toggle('minimized');
+//         });
+//     }
     
-    // Update chart title
-    chartContainer.querySelector('.chart-title').textContent = `${symbol}/${pair} Price Chart`;
+//     // Update chart title
+//     chartContainer.querySelector('.chart-title').textContent = `${symbol}/${pair} Price Chart`;
     
-    // Show chart container
-    chartContainer.classList.add('visible');
+//     // Show chart container
+//     chartContainer.classList.add('visible');
     
-    try {
-        // Convert USD pair to USDT for API compatibility
-        const apiPair = pair === 'USD' ? 'USDT' : pair;
+//     try {
+//         // Convert USD pair to USDT for API compatibility
+//         const apiPair = pair === 'USD' ? 'USDT' : pair;
         
-        // Fetch historical data
-        const response = await axios.get(
-            `https://min-api.cryptocompare.com/data/v2/histohour?fsym=${symbol}&tsym=${apiPair}&limit=24`
-        );
+//         // Fetch historical data
+//         const response = await axios.get(
+//             `https://min-api.cryptocompare.com/data/v2/histohour?fsym=${symbol}&tsym=${apiPair}&limit=24`
+//         );
         
-        if (response.data && response.data.Data && response.data.Data.Data) {
-            const chartData = response.data.Data.Data;
+//         if (response.data && response.data.Data && response.data.Data.Data) {
+//             const chartData = response.data.Data.Data;
             
-            // Extract timestamps and prices
-            const timestamps = chartData.map(item => new Date(item.time * 1000));
-            const prices = chartData.map(item => item.close);
+//             // Extract timestamps and prices
+//             const timestamps = chartData.map(item => new Date(item.time * 1000));
+//             const prices = chartData.map(item => item.close);
             
-            // If we have data, initialize chart
-            if (prices.length > 0) {
-                initializeChart(timestamps, prices, symbol, pair);
-            } else {
-                chartContainer.querySelector('.chart-title').textContent = `No price data for ${symbol}/${pair}`;
-            }
-        } else {
-            throw new Error("Invalid chart data format");
-        }
-    } catch (error) {
-        console.error("Error fetching chart data:", error);
-        chartContainer.querySelector('.chart-title').textContent = `Error loading ${symbol}/${pair} chart`;
-    }
-}
+//             // If we have data, initialize chart
+//             if (prices.length > 0) {
+//                 initializeChart(timestamps, prices, symbol, pair);
+//             } else {
+//                 chartContainer.querySelector('.chart-title').textContent = `No price data for ${symbol}/${pair}`;
+//             }
+//         } else {
+//             throw new Error("Invalid chart data format");
+//         }
+//     } catch (error) {
+//         console.error("Error fetching chart data:", error);
+//         chartContainer.querySelector('.chart-title').textContent = `Error loading ${symbol}/${pair} chart`;
+//     }
+// }
 
-function initializeChart(timestamps, prices, symbol, pair) {
-    // If Chart.js is not available, load it dynamically
-    if (!window.Chart) {
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-        script.onload = () => createChart(timestamps, prices, symbol, pair);
-        document.head.appendChild(script);
-        return;
-    }
+// function initializeChart(timestamps, prices, symbol, pair) {
+//     // If Chart.js is not available, load it dynamically
+//     if (!window.Chart) {
+//         const script = document.createElement('script');
+//         script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+//         script.onload = () => createChart(timestamps, prices, symbol, pair);
+//         document.head.appendChild(script);
+//         return;
+//     }
     
-    createChart(timestamps, prices, symbol, pair);
-}
+//     createChart(timestamps, prices, symbol, pair);
+// }
 
-function createChart(timestamps, prices, symbol, pair) {
-    const canvas = document.getElementById('price-chart');
-    const ctx = canvas.getContext('2d');
+// function createChart(timestamps, prices, symbol, pair) {
+//     const canvas = document.getElementById('price-chart');
+//     const ctx = canvas.getContext('2d');
     
-    // Destroy previous chart if exists
-    if (window.priceChart) {
-        window.priceChart.destroy();
-    }
+//     // Destroy previous chart if exists
+//     if (window.priceChart) {
+//         window.priceChart.destroy();
+//     }
     
-    // Create gradient background
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, 'rgba(54, 162, 235, 0.6)');
-    gradient.addColorStop(1, 'rgba(54, 162, 235, 0.1)');
+//     // Create gradient background
+//     const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+//     gradient.addColorStop(0, 'rgba(54, 162, 235, 0.6)');
+//     gradient.addColorStop(1, 'rgba(54, 162, 235, 0.1)');
     
-    // Create chart
-    window.priceChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: timestamps,
-            datasets: [{
-                label: `${symbol}/${pair} Price`,
-                data: prices,
-                borderColor: 'rgba(54, 162, 235, 1)',
-                backgroundColor: gradient,
-                borderWidth: 2,
-                pointRadius: 0,
-                fill: true,
-                tension: 0.4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: {
-                    type: 'time',
-                    time: {
-                        unit: 'hour',
-                        displayFormats: {
-                            hour: 'HH:mm'
-                        }
-                    },
-                    ticks: {
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        maxRotation: 0
-                    },
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
-                    }
-                },
-                y: {
-                    ticks: {
-                        color: 'rgba(255, 255, 255, 0.7)'
-                    },
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    mode: 'index',
-                    intersect: false,
-                    backgroundColor: 'rgba(0, 0, 0, 0.7)'
-                }
-            },
-            interaction: {
-                mode: 'index',
-                intersect: false
-            },
-            animations: {
-                tension: {
-                    duration: 1000,
-                    easing: 'linear'
-                }
-            }
-        }
-    });
-}
+//     // Create chart
+//     window.priceChart = new Chart(ctx, {
+//         type: 'line',
+//         data: {
+//             labels: timestamps,
+//             datasets: [{
+//                 label: `${symbol}/${pair} Price`,
+//                 data: prices,
+//                 borderColor: 'rgba(54, 162, 235, 1)',
+//                 backgroundColor: gradient,
+//                 borderWidth: 2,
+//                 pointRadius: 0,
+//                 fill: true,
+//                 tension: 0.4
+//             }]
+//         },
+//         options: {
+//             responsive: true,
+//             maintainAspectRatio: false,
+//             scales: {
+//                 x: {
+//                     type: 'time',
+//                     time: {
+//                         unit: 'hour',
+//                         displayFormats: {
+//                             hour: 'HH:mm'
+//                         }
+//                     },
+//                     ticks: {
+//                         color: 'rgba(255, 255, 255, 0.7)',
+//                         maxRotation: 0
+//                     },
+//                     grid: {
+//                         color: 'rgba(255, 255, 255, 0.1)'
+//                     }
+//                 },
+//                 y: {
+//                     ticks: {
+//                         color: 'rgba(255, 255, 255, 0.7)'
+//                     },
+//                     grid: {
+//                         color: 'rgba(255, 255, 255, 0.1)'
+//                     }
+//                 }
+//             },
+//             plugins: {
+//                 legend: {
+//                     display: false
+//                 },
+//                 tooltip: {
+//                     mode: 'index',
+//                     intersect: false,
+//                     backgroundColor: 'rgba(0, 0, 0, 0.7)'
+//                 }
+//             },
+//             interaction: {
+//                 mode: 'index',
+//                 intersect: false
+//             },
+//             animations: {
+//                 tension: {
+//                     duration: 1000,
+//                     easing: 'linear'
+//                 }
+//             }
+//         }
+//     });
+// }
 
 module.exports = showPairSelector;

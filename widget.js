@@ -19,7 +19,7 @@ const displayEmbeddedChart = require('./src/component/displayEmbeddedChart');
 
 const searchCryptos = require('./src/component/searchCryptos');
 const initDragAndDrop = require('./src/component/initDragAndDrop');
-
+const chartArea = document.querySelector('.chart-area');
 const fs = require('fs');
 const path = require('path');
 
@@ -1013,48 +1013,14 @@ async function refreshCryptoList() {
         `;
 
         item.addEventListener('click', (e) => {
-            // Ignore if clicking the remove button
             if (e.target.classList.contains('remove')) return;
-            
-            // Get all crypto items and remove active class from others
             const allItems = document.querySelectorAll('.crypto-item');
             allItems.forEach(i => {
-                if (i !== item) {
-                    i.classList.remove('active');
-                    // Also collapse their charts
-                    const parentContainer = i.closest('.crypto-item-container');
-                    if (parentContainer) {
-                        const chart = parentContainer.querySelector('.chart-area');
-                        if (chart) {
-                            chart.classList.remove('visible');
-                        }
-                    }
-                }
+                if (i !== item) i.classList.remove('active');
             });
-        
-            // Toggle active state for clicked item
             item.classList.toggle('active');
-        
-            // Handle chart visibility
-            const chartArea = container.querySelector('.chart-area');
-            const isVisible = chartArea.classList.contains('visible');
-            
-            // Toggle chart visibility
-            chartArea.classList.toggle('visible', !isVisible);
-        
-            // Load chart data if not already loaded
-            if (!isVisible && !chartArea.dataset.loaded) {
-                chartArea.dataset.loaded = 'true';
-                displayEmbeddedChart(symbol, pair, chartArea);
-            }
-        
-            // Initialize drag and drop functionality
+            displayEmbeddedChart(symbol, pair, chartArea);
             initDragAndDrop();
-        
-            // Scroll chart into view if it's being shown
-            if (!isVisible) {
-                chartArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
         });
 
         const removeBtn = item.querySelector('.remove');
@@ -1063,8 +1029,6 @@ async function refreshCryptoList() {
             removeCrypto(`${symbol}/${pair}`);
         });
 
-        const chartArea = document.createElement('div');
-        chartArea.className = 'chart-area';
         chartArea.innerHTML = `
             <div class="chart-header">
                 <div class="chart-title">${symbol}/${pair} Chart</div>
@@ -1082,7 +1046,7 @@ async function refreshCryptoList() {
         });
 
         container.appendChild(item);
-        container.appendChild(chartArea);
+        // container.appendChild(chartArea);
         cryptoListEl.appendChild(container);
     });
 
