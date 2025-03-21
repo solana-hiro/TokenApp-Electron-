@@ -1024,9 +1024,31 @@ async function refreshCryptoList() {
         });
 
         const removeBtn = item.querySelector('.remove');
-        removeBtn.addEventListener('click', (e) => {
+        removeBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            removeCrypto(`${symbol}/${pair}`);
+            
+            try {
+                // Read the current data from data.json
+                const dataPath = path.join(__dirname, 'public', 'data.json');
+                const currentData = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+                
+                // Filter out the token to be removed
+                const updatedData = currentData.filter(item => 
+                    !(item.Symbol === symbol)
+                );
+                
+                // Write the updated data back to data.json
+                fs.writeFileSync(dataPath, JSON.stringify(updatedData, null, 2));
+                
+                // Remove from UI
+                removeCrypto(`${symbol}/${pair}`);
+                
+                // Refresh the crypto list to reflect changes
+                refreshCryptoList();
+                
+            } catch (error) {
+                console.error('Error updating data.json:', error);
+            }
         });
 
         chartArea.innerHTML = `
