@@ -1,3 +1,4 @@
+const fetchPriceWithWaterfall = require('./fetchPriceWithWaterfall');
 
 function setupPriceFetching() {
     console.log("Setting up exchange waterfall price fetching system");

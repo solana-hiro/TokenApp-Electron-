@@ -35,30 +35,27 @@
                 <button class="btn close-search-modal" id="close-search-modal">×</button>
             </div>
             <div class="search-body">
-                <input type="text" class="search-input" id="search-input" placeholder="Search for cryptocurrency...">
+                <div class="search-input-container">
+                    <span class="search-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </span>
+                    <input type="text" class="search-input" id="search-input" placeholder="Search for cryptocurrency...">
+                    <span class="clear-icon" id="clear-search">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                        </svg>
+                    </span>
+                </div>
                 <div class="search-status" id="search-status">Enter at least 2 characters to search</div>
                 <div class="search-results" id="search-results"></div>
                 
-                <div id="exchange-comparison" class="exchange-comparison" style="display: none;">
-                    <div class="exchange-comparison-header">
-                        <h3 id="comparison-title">Exchange Comparison</h3>
-                        <button id="back-to-search" class="btn back-btn">Back to Search</button>
-                    </div>
-                    <div class="comparison-loading">Loading exchange data...</div>
-                    <table class="exchange-table" id="exchange-comparison-table">
-                        <thead>
-                            <tr>
-                                <th>Exchange</th>
-                                <th>Pair</th>
-                                <th class="volume-header">Volume</th>
-                                <th>Price</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="exchange-comparison-body">
-                            <!-- Exchange data will be inserted here -->
-                        </tbody>
-                    </table>
+                <div id="exchange-results-container" class="exchange-results-container" style="display: none;">
+                    <!-- Exchange results will be displayed here -->
                 </div>
             </div>
         </div>

@@ -56,6 +56,79 @@ body {
     opacity: var(--opacity);
 }
 
+
+/* Chart container styles */
+.chart-container {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 200px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(5px);
+    padding: 15px;
+    border-top: 1px solid var(--glass-border);
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    z-index: 1000;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.chart-container.visible {
+    transform: translateY(0);
+}
+
+.chart-container.minimized {
+    height: 40px;
+    padding: 5px 15px;
+}
+
+.chart-container.minimized .price-chart {
+    display: none;
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    height: 30px;
+}
+
+.chart-title {
+    flex: 1;
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chart-close,
+.chart-minimize {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px 8px;
+    margin-left: 8px;
+    color: var(--text-color);
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.chart-close:hover,
+.chart-minimize:hover {
+    opacity: 1;
+}
+
+.price-chart {
+    width: 100%;
+    height: calc(100% - 40px);
+    transition: height 0.3s ease;
+}
+
 .widget-container {
     width: 100%;
     height: 100vh;
@@ -235,7 +308,7 @@ border: 1px solid var(--glass-border);
 }
 
 .search-results {
-    max-height: 200px;
+    max-height: 400px;
     overflow-y: auto;
 }
 
@@ -642,6 +715,12 @@ backdrop-filter: blur(15px);
 display: none;
 z-index: 200;
 overflow-y: auto;
+}
+
+.search-input-container{
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .search-header {
@@ -1529,4 +1608,42 @@ font-size: 14px;
 ::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.2);
     border-radius: 3px;
+}
+
+.crypto-item {
+    cursor: move; /* Show move cursor */
+    user-select: none; /* Prevent text selection while dragging */
+}
+
+.crypto-item-container {
+    transition: transform 0.2s ease;
+}
+
+.crypto-item-container.dragging {
+    opacity: 0.5;
+    background: rgba(53, 179, 165, 0.1);
+}
+
+.crypto-item-container.dragging .crypto-item {
+    transform: scale(1.02);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Add a visual indicator for the drag target */
+.crypto-item-container:not(.dragging) {
+    position: relative;
+}
+
+.crypto-item-container:not(.dragging)::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: transparent;
+    transition: background-color 0.2s ease;
+}
+
+.crypto-item-container:not(.dragging):hover::after {
+    background: rgba(53, 179, 165, 0.5);
 }

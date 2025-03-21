@@ -1,28 +1,9 @@
 const { ipcRenderer } = require('electron');
 const axios = require('axios');
 
-// Global variables
-let trackedCryptos = ['BTC', 'ETH', 'SOL']; // Default, will be updated from preferences
-const supportHistory = {}; // Tracks success/failure history for each exchange/pair
-const FAILURE_THRESHOLD = 2; // Number of failures before marking as problematic
-const alternativeExchanges = [
-  'coinex', 'bitfinex', 'ascendex', 'bitstamp', 'poloniex', 'huobi', 'gemini'
-]; // Additional exchanges to try for rare pairs
-const EXCHANGES_SUCCESS_WEIGHT = 3;  // How much to prioritize successful exchanges
-const EXCHANGES_FAILURE_PENALTY = 1; // Penalty for failed exchanges
-const EXCHANGES_SUCCESS_MEMORY = 5;  // How many successful fetches to remember
-const API_TIMEOUT = 5000;         // Timeout for API calls
-const MAX_RETRY_EXCHANGES = 7;    // Maximum number of exchanges to try before falling back
-
-let sortMethod = 'default';
 let currentPair = 'USDT';
-let binanceSocket = null;
 let lastPrices = {};
-let reconnectAttempts = 0;
 let cryptoList = {};
-const maxReconnectAttempts = 5;
-let lastConnectionAttempt = 0;
-let heartbeatInterval = null;
 let decimalPlacesMode = 'auto';
 // Add these variables at the top with your other global variables
 const EXCHANGES = ['binance', 'coinbase', 'kraken', 'okx', 'mexc', 'gate', 'bitget', 'kucoin', 'bybit', 'htx'];
@@ -30,11 +11,17 @@ const supportedPairsCache = {}; // Format: {exchange: {symbolPair: true}}
 const priceCache = {}; // Format: {symbol/pair: {price: number, source: string, timestamp: number}}
 const CACHE_EXPIRY = 60 * 1000; // 60 seconds cache expiry
 
+const createPairSelectorModal = require('./src/component/createPairSelectorModal');
 let currentTheme = localStorage.getItem('theme') || 'light';
 const fallbackCoins = require('./src/utils/fallbackCoins');
 const showToast = require('./src/component/toast');
 const displayEmbeddedChart = require('./src/component/displayEmbeddedChart');
-const exchangesToFetch = ['binance', 'okx', 'mexc', 'gate', 'bitget', 'kucoin', 'bybit', 'htx'];
+
+const searchCryptos = require('./src/component/searchCryptos');
+const initDragAndDrop = require('./src/component/initDragAndDrop');
+
+const fs = require('fs');
+const path = require('path');
 
 function initializeTheme() {
     document.documentElement.setAttribute('data-theme', currentTheme);
@@ -57,7 +44,7 @@ function switchTheme(theme) {
     ipcRenderer.send('set-theme', theme);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     initializeTheme();
     
     document.querySelectorAll('.theme-btn').forEach(btn => {
@@ -65,6 +52,60 @@ document.addEventListener('DOMContentLoaded', () => {
             switchTheme(btn.dataset.theme);
         });
     });
+
+    // Initialize search functionality
+    const { initializeSearch } = require('./src/component/searchCryptos');
+    initializeSearch();
+    
+    // Handle toggle search modal
+    const addCryptoBtn = document.getElementById('add-crypto');
+    if (addCryptoBtn) {
+        addCryptoBtn.addEventListener('click', () => {
+            toggleSearchModal(true);
+            
+            // Focus the search input when the modal opens
+            setTimeout(() => {
+                const searchInput = document.getElementById('search-input');
+                if (searchInput) searchInput.focus();
+            }, 100);
+        });
+    }
+    
+    // Handle close search modal
+    const closeSearchBtn = document.getElementById('close-search-modal');
+    if (closeSearchBtn) {
+        closeSearchBtn.addEventListener('click', () => {
+            toggleSearchModal(false);
+        });
+    }
+
+    
+    // Set up all event listeners properly
+    setupEventListeners();
+    applyDarkTheme();
+
+    // Get saved preferences
+    ipcRenderer.send('get-preferences');
+    
+    // Create pair selector modal
+    createPairSelectorModal();
+    
+    // Load cryptocurrency list for search immediately
+    await loadCryptoList();
+    removeGhostEntries();
+    
+    cleanupInvalidPairs();
+    // Setup Binance WebSocket
+    setupBinanceWebSocket();
+    
+    // Add volume tracking
+    addVolumeTracking();
+    
+    // Setup sorting controls - THIS IS THE CRITICAL LINE
+    setupSortingControls();
+    
+    console.log("Initialization complete");
+
 });
 
 ipcRenderer.on('refresh-data', () => {
@@ -84,285 +125,7 @@ ipcRenderer.on('refresh-data', () => {
       location.reload();
     }
   });
-
   
-  function showWindow() {
-    ipcRenderer.send('show-window');
-  }
-  
-  function hideWindow() {
-    ipcRenderer.send('hide-window');
-  }
-  
-  function toggleWindowVisibility() {
-    ipcRenderer.send('toggle-window-visibility');
-  }
-  
-  function setAlwaysOnTop(value) {
-    ipcRenderer.send('set-always-on-top', value);
-  }
-  
-  function setSkipTaskbar(value) {
-    ipcRenderer.send('set-skip-taskbar', value);
-  }
-  
-  function setMinimizeToTray(value) {
-    ipcRenderer.send('set-minimize-to-tray', value);
-  }
-  
-async function fetchPriceWithWaterfall(symbol, pair) {
-    const cacheKey = `${symbol}/${pair}`;
-    const now = Date.now();
-    
-    // Check if we have a recent cached price first
-    if (priceCache[cacheKey] && now - priceCache[cacheKey].timestamp < CACHE_EXPIRY) {
-        return priceCache[cacheKey];
-    }
-    
-    console.log(`Fetching price for ${symbol}/${pair} using waterfall model`);
-    
-    // Initialize support history for this pair if needed
-    if (!supportHistory[cacheKey]) {
-        supportHistory[cacheKey] = {};
-    }
-    
-    // Check if this is a known problematic pair that has a special handler
-    if ((symbol === 'QUBIC' && pair === 'USDC') || 
-        (symbol === 'CLOAK' && pair === 'USDT') || 
-        window.problematicApiPairs[cacheKey]) {
-            
-        // Try specialized sources first for known problematic pairs
-        const specialResult = await trySpecialSources(symbol, pair);
-        if (specialResult) {
-            return specialResult;
-        }
-        
-        // If that fails, try CryptoCompare
-        const ccResult = await tryCryptoCompare(symbol, pair);
-        if (ccResult) {
-            return ccResult;
-        }
-    }
-    
-    // Get exchanges to try, prioritizing those known to work
-    const exchangesToTry = prioritizeExchanges(symbol, pair);
-    let exchangesAttempted = 0;
-    
-    // Try each exchange in order until we get a price or hit the max retry limit
-    for (const exchange of exchangesToTry) {
-        // Stop after trying a reasonable number of exchanges
-        if (exchangesAttempted >= MAX_RETRY_EXCHANGES) {
-            console.log(`Reached maximum retry limit (${MAX_RETRY_EXCHANGES}) for ${cacheKey}`);
-            break;
-        }
-        
-        // Skip if we know this exchange has failed multiple times for this pair
-        if (supportHistory[cacheKey][exchange] && 
-            supportHistory[cacheKey][exchange].failures >= FAILURE_THRESHOLD) {
-            continue;
-        }
-        
-        // Skip if this is a known problematic API for this pair
-        if (window.problematicApiPairs[cacheKey]?.includes(exchange)) {
-            continue;
-        }
-        
-        exchangesAttempted++;
-        console.log(`Trying ${exchange} for ${symbol}/${pair}... (attempt ${exchangesAttempted}/${MAX_RETRY_EXCHANGES})`);
-        
-        // Use timeout for API calls to avoid long waits
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
-        
-        try {
-            const result = await fetchPriceFromExchange(exchange, symbol, pair, controller.signal);
-            clearTimeout(timeoutId);
-            
-            if (result && result.price) {
-                // Update support history - record success
-                if (!supportHistory[cacheKey][exchange]) {
-                    supportHistory[cacheKey][exchange] = { successes: 0, failures: 0 };
-                }
-                supportHistory[cacheKey][exchange].successes++;
-                supportHistory[cacheKey][exchange].lastSuccess = now;
-                
-                // Cache the result
-                priceCache[cacheKey] = {
-                    price,
-                    change: result.change || 0,
-                    volume: result.volume || 0,
-                    source: exchange,
-                    timestamp: now
-                };
-                
-                return priceCache[cacheKey];
-            } else {
-                // Record failure
-                recordFailure(cacheKey, exchange);
-            }
-        } catch (error) {
-            clearTimeout(timeoutId);
-            
-            // Record failure
-            recordFailure(cacheKey, exchange);
-            
-            if (error.name === 'AbortError') {
-                console.warn(`${exchange} timed out for ${symbol}/${pair}`);
-                
-                // Mark as problematic for future reference
-                if (!window.problematicApiPairs[cacheKey]) {
-                    window.problematicApiPairs[cacheKey] = [];
-                }
-                if (!window.problematicApiPairs[cacheKey].includes(exchange)) {
-                    window.problematicApiPairs[cacheKey].push(exchange);
-                }
-            }
-        }
-    }
-    
-    // If no standard exchange worked, try specialized sources and CryptoCompare
-    const specialResult = await trySpecialSources(symbol, pair);
-    if (specialResult) {
-        return specialResult;
-    }
-    
-    const ccResult = await tryCryptoCompare(symbol, pair);
-    if (ccResult) {
-        return ccResult;
-    }
-    
-    // Return null if all methods fail
-    return null;
-}
-
-// Helper function to record exchange failures
-function recordFailure(cacheKey, exchange) {
-    if (!supportHistory[cacheKey]) {
-        supportHistory[cacheKey] = {};
-    }
-    if (!supportHistory[cacheKey][exchange]) {
-        supportHistory[cacheKey][exchange] = { successes: 0, failures: 0 };
-    }
-    supportHistory[cacheKey][exchange].failures++;
-}
-
-function prioritizeExchanges(symbol, pair) {
-    const cacheKey = `${symbol}/${pair}`;
-    const exchanges = [...EXCHANGES]; // Start with the default exchange list
-    
-    // If we have support history, sort by success probability
-    if (supportHistory[cacheKey]) {
-        exchanges.sort((a, b) => {
-            const aHistory = supportHistory[cacheKey][a] || { successes: 0, failures: 0 };
-            const bHistory = supportHistory[cacheKey][b] || { successes: 0, failures: 0 };
-            
-            // Calculate a score based on success and failure history
-            const aScore = (aHistory.successes * EXCHANGES_SUCCESS_WEIGHT) - 
-                          (aHistory.failures * EXCHANGES_FAILURE_PENALTY);
-            const bScore = (bHistory.successes * EXCHANGES_SUCCESS_WEIGHT) - 
-                          (bHistory.failures * EXCHANGES_FAILURE_PENALTY);
-            
-            // Also factor in recency of success
-            const aRecency = aHistory.lastSuccess ? (Date.now() - aHistory.lastSuccess) : Infinity;
-            const bRecency = bHistory.lastSuccess ? (Date.now() - bHistory.lastSuccess) : Infinity;
-            
-            // If scores are very different, use that
-            if (Math.abs(aScore - bScore) > 3) {
-                return bScore - aScore;
-            }
-            
-            // Otherwise prioritize more recent successes
-            return aRecency - bRecency;
-        });
-        
-        console.log(`Prioritized exchanges for ${cacheKey}: ${exchanges.slice(0, 3).join(', ')}`);
-    }
-    
-    // Add alternative exchanges for rare pairs
-    for (const altExchange of alternativeExchanges) {
-        if (!exchanges.includes(altExchange)) {
-            exchanges.push(altExchange);
-        }
-    }
-    
-    return exchanges;
-}
-
-async function trySpecialSources(symbol, pair) {
-    const cacheKey = `${symbol}/${pair}`;
-    const now = Date.now();
-    
-    console.log(`Trying specialized sources for ${cacheKey}`);
-    
-    // Try CoinEx for QUBIC/USDC and other rare pairs
-    if ((symbol === 'QUBIC' && pair === 'USDC') || 
-        (symbol === 'CLOAK' && pair === 'USDT') || 
-        !supportHistory[cacheKey] || 
-        Object.values(supportHistory[cacheKey]).every(h => h.failures >= FAILURE_THRESHOLD)) {
-        
-        try {
-            console.log(`Trying CoinEx for ${cacheKey}`);
-            const coinexResp = await axios.get(`https://api.coinex.com/v1/market/ticker?market=${symbol}${pair}`, 
-                { timeout: 8000 });
-            
-            if (coinexResp.data && coinexResp.data.data && coinexResp.data.data.ticker) {
-                const price = parseFloat(coinexResp.data.data.ticker.last);
-                const change = parseFloat(coinexResp.data.data.ticker.percent_change) * 100;
-                const volume = parseFloat(coinexResp.data.data.ticker.vol) || 0;
-                
-                console.log(`Got price from CoinEx: ${price}, volume: ${volume}`);
-
-                
-                // Cache the result
-                priceCache[cacheKey] = {
-                    price,
-                    change,
-                    volume,
-                    source: 'coinex',
-                    timestamp: now
-                };
-                
-                return priceCache[cacheKey];
-            }
-        } catch (error) {
-            console.error(`CoinEx special source failed for ${cacheKey}:`, error.message);
-        }
-    }
-    
-    // Try additional specialized sources if needed
-    try {
-        // Add support for more exotic pairs from specific exchanges
-        // This could include special format for Bittrex, KuCoin, etc.
-        
-        // Example for BitMart which supports some rare pairs
-        console.log(`Trying BitMart for ${cacheKey}`);
-        const bitmartResp = await axios.get(`https://api-cloud.bitmart.com/spot/v1/ticker?symbol=${symbol}_${pair}`,
-            { timeout: 8000 });
-        
-        if (bitmartResp.data && bitmartResp.data.data && bitmartResp.data.data.tickers && 
-            bitmartResp.data.data.tickers.length > 0) {
-            const ticker = bitmartResp.data.data.tickers[0];
-            const price = parseFloat(ticker.last_price);
-            
-            console.log(`Got price from BitMart: ${price}`);
-            
-            // Cache the result
-            priceCache[cacheKey] = {
-                price,
-                change: 0, // BitMart doesn't provide change in this endpoint
-                source: 'bitmart',
-                timestamp: now
-            };
-            
-            return priceCache[cacheKey];
-        }
-    } catch (error) {
-        console.error(`BitMart special source failed for ${cacheKey}:`, error.message);
-    }
-    
-    return null;
-}
-
 // Add this function to diagnose and fix volume data
 function diagnosePriceCache() {
     console.log("=== PRICE CACHE DIAGNOSIS ===");
@@ -420,205 +183,6 @@ function diagnosePriceCache() {
 setTimeout(() => {
     diagnosePriceCache();
 }, 3000);
-
-async function tryCryptoCompare(symbol, pair) {
-    const cacheKey = `${symbol}/${pair}`;
-    const now = Date.now();
-    
-    console.log(`Trying CryptoCompare API as fallback for ${cacheKey}`);
-    
-    try {
-        // Try the main price endpoint first (faster)
-        const priceResponse = await axios.get(
-            `https://min-api.cryptocompare.com/data/price?fsym=${symbol}&tsyms=${pair}`,
-            { timeout: 8000 }
-        );
-        
-        if (priceResponse.data && priceResponse.data[pair]) {
-            const price = priceResponse.data[pair];
-            console.log(`Got price from CryptoCompare: ${price}`);
-            
-            // Now try to get change data from a different endpoint
-            let change = 0;
-            try {
-                const changeResponse = await axios.get(
-                    `https://min-api.cryptocompare.com/data/v2/histoday?fsym=${symbol}&tsym=${pair}&limit=1`,
-                    { timeout: 8000 }
-                );
-                
-                if (changeResponse.data?.Data?.Data?.length >= 2) {
-                    const today = changeResponse.data.Data.Data[1];
-                    const yesterday = changeResponse.data.Data.Data[0];
-                    change = ((today.close - yesterday.close) / yesterday.close) * 100;
-                }
-            } catch (changeError) {
-                console.log(`Could not fetch change data for ${cacheKey}`);
-                // Continue without change data
-            }
-            
-            // Cache the result
-            priceCache[cacheKey] = {
-                price,
-                change,
-                source: 'cryptocompare',
-                timestamp: now
-            };
-            
-            return priceCache[cacheKey];
-        }
-    } catch (error) {
-        console.error(`CryptoCompare price endpoint failed for ${cacheKey}:`, error.message);
-    }
-    
-    // If the simple endpoint fails, try the more comprehensive one
-    try {
-        const fullResponse = await axios.get(
-            `https://min-api.cryptocompare.com/data/pricemultifull?fsyms=${symbol}&tsyms=${pair}`,
-            { timeout: 8000 }
-        );
-        
-        if (fullResponse.data?.RAW?.[symbol]?.[pair]) {
-            const data = fullResponse.data.RAW[symbol][pair];
-            const price = data.PRICE;
-            const change = data.CHANGEPCT24HOUR || 0;
-            
-            console.log(`Got price from CryptoCompare full endpoint: ${price}`);
-            
-            // Cache the result
-            priceCache[cacheKey] = {
-                price,
-                change,
-                source: 'cryptocompare',
-                timestamp: now
-            };
-            
-            return priceCache[cacheKey];
-        }
-    } catch (error) {
-        console.error(`CryptoCompare full endpoint failed for ${cacheKey}:`, error.message);
-    }
-    
-    // Try CoinGecko as a last resort
-    try {
-        console.log(`Trying CoinGecko for ${cacheKey}`);
-        
-        // CoinGecko uses different IDs, so we need to map common ones
-        const cgSymbolMap = {
-            'btc': 'bitcoin',
-            'eth': 'ethereum',
-            'sol': 'solana',
-            'doge': 'dogecoin',
-            'usdt': 'tether',
-            'usdc': 'usd-coin',
-            'bnb': 'binancecoin',
-            'xrp': 'ripple',
-            'ada': 'cardano',
-            'avax': 'avalanche-2',
-            'link': 'chainlink',
-            'dot': 'polkadot',
-            'ltc': 'litecoin',
-            'qubic': 'qubic',
-            'cloak': 'cloakcoin'
-            // Add more mappings as needed
-        };
-        
-        const coinId = cgSymbolMap[symbol.toLowerCase()] || symbol.toLowerCase();
-        const vsCurrency = pair.toLowerCase();
-        
-        // Map USDT, USDC to usd for CoinGecko
-        const cgVsCurrency = ['usdt', 'usdc'].includes(vsCurrency) ? 'usd' : vsCurrency;
-        
-        const cgResponse = await axios.get(
-            `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=${cgVsCurrency}&include_24hr_change=true`,
-            { timeout: 8000 }
-        );
-        
-        if (cgResponse.data?.[coinId]?.[cgVsCurrency]) {
-            const price = cgResponse.data[coinId][cgVsCurrency];
-            const change = cgResponse.data[coinId][`${cgVsCurrency}_24h_change`] || 0;
-            
-            console.log(`Got price from CoinGecko: ${price}`);
-            
-            // Cache the result
-            priceCache[cacheKey] = {
-                price,
-                change,
-                source: 'coingecko',
-                timestamp: now
-            };
-            
-            return priceCache[cacheKey];
-        }
-    } catch (cgError) {
-        console.error(`CoinGecko failed for ${cacheKey}:`, cgError.message);
-    }
-    
-    // As a final resort, try our specialized support for known pairs
-    if (symbol === 'QUBIC' && pair === 'USDC') {
-        try {
-            // Try coinex specifically for QUBIC/USDC
-            const response = await axios.get(
-                'https://coinex.com/api/market/ticker?market=QUBICUSDC',
-                { timeout: 8000 }
-            );
-            
-            if (response.data?.data?.ticker?.last) {
-                const price = parseFloat(response.data.data.ticker.last);
-                console.log(`Got QUBIC/USDC from special handling: ${price}`);
-                
-                priceCache[cacheKey] = {
-                    price,
-                    change: 0,
-                    source: 'coinex-special',
-                    timestamp: now
-                };
-                
-                return priceCache[cacheKey];
-            }
-        } catch (error) {
-            console.error('Special QUBIC/USDC handler failed:', error.message);
-        }
-    }
-    
-    if (symbol === 'CLOAK' && pair === 'USDT') {
-        try {
-            // Try livecoinwatch for CLOAK/USDT
-            const response = await axios.get(
-                'https://api.livecoinwatch.com/coins/single',
-                {
-                    headers: {
-                        'x-api-key': 'your-api-key-here' // You'd need a real key
-                    },
-                    data: {
-                        currency: 'USDT',
-                        code: 'CLOAK',
-                        meta: true
-                    },
-                    timeout: 8000
-                }
-            );
-            
-            if (response.data?.rate) {
-                const price = response.data.rate;
-                console.log(`Got CLOAK/USDT from special handling: ${price}`);
-                
-                priceCache[cacheKey] = {
-                    price,
-                    change: response.data.delta?.day || 0,
-                    source: 'lcw-special',
-                    timestamp: now
-                };
-                
-                return priceCache[cacheKey];
-            }
-        } catch (error) {
-            console.error('Special CLOAK/USDT handler failed:', error.message);
-        }
-    }
-    
-    console.log(`All fallback methods failed for ${cacheKey}`);
-    return null;
-}
 
 async function fetchPriceFromExchange(exchange, base, quote, signal) {
     // Normalize symbol formats
@@ -959,249 +523,23 @@ function addVolumeTracking() {
 }
 
 function formatVolume(volume) {
-    // Debug log
-    console.log('formatVolume input:', {
-        value: volume,
-        type: typeof volume,
-        isNumber: !isNaN(parseFloat(volume))
-    });
-
-    // Handle invalid inputs
-    if (volume === null || volume === undefined || volume === '') {
-        return '---';
+    if (volume === undefined || volume === null || isNaN(volume)) {
+        return 'N/A';
     }
-
-    try {
-        // Force conversion to number
-        const numVolume = parseFloat(String(volume).replace(/[^0-9.-]/g, ''));
-        
-        // Debug log after conversion
-        console.log('Converted volume:', numVolume);
-
-        if (isNaN(numVolume)) {
-            return '---';
-        }
-
-        // Format based on size
-        if (numVolume >= 1000000000) {
-            return `${(numVolume / 1000000000).toFixed(2)}B`;
-        } else if (numVolume >= 1000000) {
-            return `${(numVolume / 1000000).toFixed(2)}M`;
-        } else if (numVolume >= 1000) {
-            return `${(numVolume / 1000).toFixed(2)}K`;
-        } else {
-            if (numVolume < 1) {
-                return numVolume.toFixed(6);
-            } else if (numVolume < 10) {
-                return numVolume.toFixed(4);
-            } else {
-                return numVolume.toFixed(2);
-            }
-        }
-    } catch (error) {
-        console.error('Error formatting volume:', {
-            originalValue: volume,
-            error: error.message
-        });
-        return '---';
+    
+    const numVolume = parseFloat(volume);
+    
+    if (numVolume >= 1000000000) {
+        return `${(numVolume / 1000000000).toFixed(2)}B`;
+    } else if (numVolume >= 1000000) {
+        return `${(numVolume / 1000000).toFixed(2)}M`;
+    } else if (numVolume >= 1000) {
+        return `${(numVolume / 1000).toFixed(2)}K`;
+    } else {
+        return numVolume.toFixed(2);
     }
 }
 
-function sortCryptoList(method) {
-    console.log(`Sorting by ${method}...`);
-    sortMethod = method;
-    const cryptoListEl = document.getElementById('crypto-list');
-    
-    // First, ensure we have volume data for all pairs
-    if (method === 'volumeDesc') {
-        ensureVolumeData();
-    }
-    
-    // Get all containers and convert to array for sorting
-    const containers = Array.from(cryptoListEl.querySelectorAll('.crypto-item-container'));
-    
-    // Log existing prices and volumes before sorting
-    if (method === 'volumeDesc' || method === 'priceDesc' || method === 'priceAsc') {
-        console.log("=== DATA BEFORE SORTING ===");
-        containers.forEach(container => {
-            const item = container.querySelector('.crypto-item');
-            const symbol = item.getAttribute('data-symbol');
-            const pair = item.getAttribute('data-pair');
-            const key = `${symbol}/${pair}`;
-            console.log(`${key}: Price=${priceCache[key]?.price || 0}, Volume=${priceCache[key]?.volume || 0}`);
-        });
-    }
-    
-    // Sort based on selected method
-    containers.sort((a, b) => {
-        const itemA = a.querySelector('.crypto-item');
-        const itemB = b.querySelector('.crypto-item');
-        
-        const symbolA = itemA.getAttribute('data-symbol');
-        const symbolB = itemB.getAttribute('data-symbol');
-        const pairA = itemA.getAttribute('data-pair');
-        const pairB = itemB.getAttribute('data-pair');
-        
-        const keyA = `${symbolA}/${pairA}`;
-        const keyB = `${symbolB}/${pairB}`;
-        
-        switch (method) {
-            case 'volumeDesc':
-                // Get volume from priceCache or default to 0
-                const volumeA = parseFloat(priceCache[keyA]?.volume) || 0;
-                const volumeB = parseFloat(priceCache[keyB]?.volume) || 0;
-                
-                // Log comparison for debugging
-                console.log(`Comparing volumes: ${keyA}=${volumeA.toLocaleString()} vs ${keyB}=${volumeB.toLocaleString()}`);
-                
-                // Sort by volume (highest first)
-                return volumeB - volumeA;
-                
-            case 'priceDesc':
-                // Get price from priceCache or default to 0
-                const priceA = parseFloat(priceCache[keyA]?.price) || 0;
-                const priceB = parseFloat(priceCache[keyB]?.price) || 0;
-                
-                // Sort by price (highest first)
-                return priceB - priceA;
-                
-            case 'priceAsc':
-                // Get price from priceCache or default to 0  
-                const price1 = parseFloat(priceCache[keyA]?.price) || 0;
-                const price2 = parseFloat(priceCache[keyB]?.price) || 0;
-                
-                // Sort by price (lowest first)
-                return price1 - price2;
-                
-            case 'changeDesc':
-                // Get change from priceCache or default to 0
-                const changeA = parseFloat(priceCache[keyA]?.change) || 0;
-                const changeB = parseFloat(priceCache[keyB]?.change) || 0;
-                
-                // Sort by change percentage (highest first)
-                return changeB - changeA;
-                
-            case 'changeAsc':
-                // Get change from priceCache or default to 0
-                const change1 = parseFloat(priceCache[keyA]?.change) || 0;
-                const change2 = parseFloat(priceCache[keyB]?.change) || 0;
-                
-                // Sort by change percentage (lowest first)
-                return change1 - change2;
-                
-            // Default - sort alphabetically
-            default:
-                return keyA.localeCompare(keyB);
-        }
-    });
-    
-    // Update DOM with sorted containers
-    containers.forEach(container => {
-        cryptoListEl.appendChild(container);
-    });
-    
-    // Update sort buttons UI
-    updateSortButtonsUI(method);
-    
-    console.log(`Sorting by ${method} complete`);
-}
-
-// New function to ensure we have volume data for every pair
-function ensureVolumeData() {
-    let allHaveVolume = true;
-    let someHaveVolume = false;
-    
-    // Check if we have any volume data at all
-    for (const key in priceCache) {
-        if (priceCache[key].volume && priceCache[key].volume > 0) {
-            someHaveVolume = true;
-            break;
-        }
-    }
-    
-    // If none have volume data, generate random volumes for all
-    if (!someHaveVolume) {
-        console.log("No volume data found, generating random test data for sorting");
-        
-        trackedCryptos.forEach(crypto => {
-            let symbol, pair;
-            
-            if (crypto.includes('/')) {
-                [symbol, pair] = crypto.split('/');
-            } else {
-                symbol = crypto;
-                pair = currentPair;
-            }
-            
-            const key = `${symbol}/${pair}`;
-            
-            // Generate a random volume between 1,000 and 100,000,000
-            const randomVolume = Math.random() * 99999000 + 1000;
-            
-            // Store in price cache
-            if (!priceCache[key]) {
-                priceCache[key] = { 
-                    price: 0,
-                    change: 0,
-                    timestamp: Date.now(),
-                    source: 'random'
-                };
-            }
-            
-            priceCache[key].volume = randomVolume;
-            
-            // Update UI
-            const volumeElement = document.querySelector(`.crypto-item[data-symbol="${symbol}"][data-pair="${pair}"] .crypto-volume`);
-            if (volumeElement) {
-                volumeElement.textContent = formatVolume(randomVolume);
-            }
-            
-            console.log(`Added random volume for ${key}: ${formatVolume(randomVolume)}`);
-        });
-    }
-}
-// Update sort buttons to show active state
-function updateSortButtonsUI(activeMethod) {
-    document.querySelectorAll('.sort-btn').forEach(btn => {
-        if (btn.getAttribute('data-sort') === activeMethod) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
-    });
-}
-
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log('Widget initializing...');
-    
-    // Set up all event listeners properly
-    setupEventListeners();
-    applyDarkTheme();
-
-    // Get saved preferences
-    ipcRenderer.send('get-preferences');
-    
-    // Create pair selector modal
-    createPairSelectorModal();
-    
-    // Load cryptocurrency list for search immediately
-    console.log("Loading crypto list on startup");
-    await loadCryptoList();
-    removeGhostEntries();
-    
-    cleanupInvalidPairs();
-    // Setup Binance WebSocket
-    setupBinanceWebSocket();
-    
-    // Add volume tracking
-    addVolumeTracking();
-    
-    // Setup sorting controls - THIS IS THE CRITICAL LINE
-    setupSortingControls();
-    
-    console.log("Initialization complete");
-});
-// Add this at the end of your DOMContentLoaded event handler
 setTimeout(() => {
     debugVolumeData(); // Run after 5 seconds to allow data to load
     
@@ -1221,15 +559,6 @@ ipcRenderer.on('error', (event, error) => {
 console.error('IPC error:', error);
 });
 
-// Wrap all IPC sends in try/catch
-function safeSend(channel, ...args) {
-try {
-    ipcRenderer.send(channel, ...args);
-} catch (err) {
-    console.error(`Error in IPC send to "${channel}":`, err);
-}
-}
-  
 // Create a dedicated function to set up all event listeners
 function setupEventListeners() {
     console.log("Setting up event listeners");
@@ -1333,7 +662,6 @@ if (closeSearchBtn) {
     console.log("Event listeners setup complete");
 }
 
-
 function setupSortingControls() {
     console.log("Setting up sorting controls");
     
@@ -1347,7 +675,6 @@ function setupSortingControls() {
         btn.addEventListener('click', () => {
             console.log(`Sort button clicked: ${btn.getAttribute('data-sort')}`);
             const method = btn.getAttribute('data-sort');
-            sortCryptoList(method);
         });
     });
     
@@ -1385,7 +712,6 @@ function setupSettingsControls() {
     document.querySelectorAll('.sort-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const method = btn.getAttribute('data-sort');
-            sortCryptoList(method);
         });
     });
     
@@ -1532,7 +858,6 @@ function toggleSettingsPanel(show) {
 
 // Listen for preferences from main process
 ipcRenderer.on('preferences', (event, preferences) => {
-    console.log('Received preferences:', preferences);
     trackedCryptos = preferences.cryptos;
     currentPair = preferences.pair;
     
@@ -1553,273 +878,7 @@ ipcRenderer.on('pair-updated', (event, pair) => {
     updatePairButtons(pair);
     refreshCryptoList();
 });
-
-
-function setupBinanceWebSocket() {
-    console.log("Setting up hybrid WebSocket/API price fetching system");
-    
-    // Prevent too frequent reconnections
-    const now = Date.now();
-    if (now - lastConnectionAttempt < 10000) { // Increase to 10 seconds
-        console.log('Connection attempt throttled, using existing connections');
-        return;
-    }
-    lastConnectionAttempt = now;
-    
-    // Clear existing intervals
-    if (window.priceFetchInterval) {
-        clearInterval(window.priceFetchInterval);
-        window.priceFetchInterval = null;
-    }
-    
-    if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
-        heartbeatInterval = null;
-    }
-    
-    // Close existing socket more gracefully
-    if (binanceSocket) {
-        try {
-            binanceSocket.onclose = null; // Remove handler to prevent automatic reconnect
-            binanceSocket.onerror = null;
-            binanceSocket.close();
-        } catch (e) {
-            console.log("Error closing existing socket:", e.message);
-        }
-        binanceSocket = null;
-        
-        // Small delay before recreating
-        setTimeout(() => {
-            initializeWebSocket();
-        }, 500);
-    } else {
-        initializeWebSocket();
-    }
-    
-    function initializeWebSocket() {
-        try {
-            // Organize tracked cryptocurrencies
-            const binancePairs = [];   // Pairs to fetch via Binance WebSocket
-            const fallbackPairs = [];  // Pairs to fetch via API waterfall
-            
-            // Process each tracked crypto
-            trackedCryptos.forEach(crypto => {
-                let symbol, pair;
-                
-                if (crypto.includes('/')) {
-                    [symbol, pair] = crypto.split('/');
-                } else {
-                    symbol = crypto;
-                    pair = currentPair;
-                }
-                
-                // Skip self-pairs
-                if (symbol === pair) {
-                    console.log(`Skipping invalid self-pair: ${symbol}/${pair}`);
-                    return;
-                }
-                
-                // Convert USD to USDT for Binance compatibility
-                const binancePair = pair === 'USD' ? 'USDT' : pair;
-                
-                // Check if we already know this pair isn't supported by Binance
-                if (supportedPairsCache.binance && 
-                    supportedPairsCache.binance[`${symbol}${binancePair}`] === false) {
-                    console.log(`Using API fallback for ${symbol}/${pair} (known unsupported on Binance)`);
-                    fallbackPairs.push({ symbol, pair });
-                    return;
-                }
-                
-                // Add to Binance pairs to try first
-                binancePairs.push({
-                    symbol,
-                    pair,
-                    binancePair,
-                    streamSymbol: `${symbol.toLowerCase()}${binancePair.toLowerCase()}`
-                });
-            });
-            
-            if (binancePairs.length === 0) {
-                console.log("No pairs to connect via Binance WebSocket");
-                setupApiFallback(fallbackPairs);
-                return;
-            }
-            
-            // Create WebSocket streams array
-            const streams = [];
-            for (const pair of binancePairs) {
-                streams.push(`${pair.streamSymbol}@ticker`);
-            }
-            
-            // Connect to Binance WebSocket with proper error handling
-            const wsUrl = `wss://stream.binance.com:9443/stream?streams=${streams.join('/')}`;
-            
-            try {
-                binanceSocket = new WebSocket(wsUrl);
-                
-                binanceSocket.onopen = () => {
-                    console.log("Binance WebSocket connected");
-                    reconnectAttempts = 0;
-                    
-                    // Start heartbeat with more robust error handling
-                    heartbeatInterval = setInterval(() => {
-                        if (binanceSocket && binanceSocket.readyState === WebSocket.OPEN) {
-                            try {
-                                binanceSocket.send(JSON.stringify({ method: 'PING' }));
-                            } catch (e) {
-                                console.error("Error sending ping, restarting connection");
-                                clearInterval(heartbeatInterval);
-                                setupBinanceWebSocket();
-                            }
-                        }
-                    }, 30000);
-                    
-                    // Process any remaining fallback pairs
-                    if (fallbackPairs.length > 0) {
-                        setupApiFallback(fallbackPairs);
-                    }
-                };
-                
-                binanceSocket.onmessage = (event) => {
-                    try {
-                        const message = JSON.parse(event.data);
-                        
-                        if (message.stream && message.stream.endsWith('@ticker') && message.data) {
-                            const data = message.data;
-                            const streamName = message.stream;
-                            const streamSymbol = streamName.replace('@ticker', '');
-                            
-                            // Find the matching pair from our tracking list
-                            const pairInfo = binancePairs.find(p => p.streamSymbol === streamSymbol);
-                            
-                            if (pairInfo) {
-                                // Get price data
-                                const price = parseFloat(data.c); // Current price
-                                const priceChangePercent = parseFloat(data.p); // 24h change percent
-                                 
-                                // Mark this pair as supported by Binance
-                                if (!supportedPairsCache.binance) {
-                                    supportedPairsCache.binance = {};
-                                }
-                                supportedPairsCache.binance[`${pairInfo.symbol}${pairInfo.binancePair}`] = true;
-                                 
-                                // Update the UI with the received price and volume
-                                const combinedKey = `${pairInfo.symbol}/${pairInfo.pair}`;
-                                updateCryptoPrice(combinedKey, price, priceChangePercent, data.q, 'binance-ws');
-                                 
-                                // Store in price cache
-                                priceCache[combinedKey] = {
-                                    price,
-                                    change: priceChangePercent,
-                                    source: 'binance-ws',
-                                    timestamp: Date.now()
-                                };
-                            }
-                        }
-                    } catch (error) {
-                        console.error("Error processing WebSocket message:", error);
-                    }
-                };
-                
-                binanceSocket.onerror = (error) => {
-                    console.error("WebSocket Error");
-                    
-                    // Move all pairs to API fallback if WebSocket fails
-                    const allPairs = [
-                        ...binancePairs.map(pair => ({ symbol: pair.symbol, pair: pair.pair })),
-                        ...fallbackPairs
-                    ];
-                    setupApiFallback(allPairs);
-                };
-                
-                binanceSocket.onclose = (event) => {
-                    console.log(`WebSocket Closed: ${event.code}`);
-                    
-                    if (heartbeatInterval) {
-                        clearInterval(heartbeatInterval);
-                        heartbeatInterval = null;
-                    }
-                    
-                    // Only reconnect if it wasn't closed deliberately
-                    if (reconnectAttempts < maxReconnectAttempts) {
-                        const delay = Math.min(2000 * Math.pow(1.5, reconnectAttempts), 30000);
-                        reconnectAttempts++;
-                        
-                        setTimeout(() => {
-                            setupBinanceWebSocket();
-                        }, delay);
-                    } else {
-                        // Move all to API fallback if max reconnects reached
-                        const allPairs = [
-                            ...binancePairs.map(pair => ({ symbol: pair.symbol, pair: pair.pair })),
-                            ...fallbackPairs
-                        ];
-                        setupApiFallback(allPairs);
-                    }
-                };
-            } catch (wsError) {
-                console.error("Failed to create WebSocket:", wsError);
-                
-                // If WebSocket fails, use API fallback for all pairs
-                const allPairs = [
-                    ...binancePairs.map(pair => ({ symbol: pair.symbol, pair: pair.pair })),
-                    ...fallbackPairs
-                ];
-                setupApiFallback(allPairs);
-            }
-        } catch (error) {
-            console.error("Error setting up WebSocket:", error);
-            // Fall back to API for all pairs
-            setupApiFallback(trackedCryptos.map(crypto => {
-                if (crypto.includes('/')) {
-                    const [symbol, pair] = crypto.split('/');
-                    return { symbol, pair };
-                }
-                return { symbol: crypto, pair: currentPair };
-            }));
-        }
-    }
-}
-
-function setupApiFallback(pairsArray) {
-    console.log(`Setting up API fallback for ${pairsArray.length} pairs`);
-    
-    // Clear any existing interval
-    if (window.fallbackInterval) {
-        clearInterval(window.fallbackInterval);
-    }
-    
-    // Skip if no pairs to process
-    if (pairsArray.length === 0) return;
-    
-    // Function to fetch prices for all fallback pairs
-    async function fetchFallbackPrices() {
-        for (const { symbol, pair } of pairsArray) {
-            // Skip if this pair is already being updated by WebSocket
-            const cacheKey = `${symbol}/${pair}`;
-            if (priceCache[cacheKey] && 
-                priceCache[cacheKey].source === 'binance-ws' && 
-                Date.now() - priceCache[cacheKey].timestamp < 30000) {
-                continue;
-            }
-            
-            try {
-                const result = await fetchPriceWithWaterfall(symbol, pair);
-                if (result) {
-                    // Update UI with the fetched price - MAKE SURE TO INCLUDE VOLUME
-                    updateCryptoPrice(cacheKey, result.price, result.change, result.volume, result.source);
-                }
-            } catch (error) {
-                console.error(`Error fetching price for ${symbol}/${pair}:`, error);
-            }
-        }
-    }
-    // Fetch immediately
-    fetchFallbackPrices();
-    
-    // Set up interval (every 30 seconds - longer to reduce API load)
-    window.fallbackInterval = setInterval(fetchFallbackPrices, 30000);
-}
+const setupBinanceWebSocket = require('./src/component/setupBinanceWebSocket');
 
 // Set up resizing functionality
 function setupResize() {
@@ -1889,74 +948,19 @@ function setupResize() {
 // Refresh all price displays when decimal format changes
 function refreshPriceDisplay() {
     trackedCryptos.forEach(crypto => {
-        const price = lastPrices[crypto];
-        if (price) {
-            const item = document.querySelector(`.crypto-item[data-symbol="${crypto}"]`);
-            if (item) {
-                const priceElement = item.querySelector('.crypto-price');
-                if (priceElement) {
-                    priceElement.textContent = `$`+ formatPrice(price);
-                }
-            }
+        let symbol, pair;
+        if (crypto.includes('/')) {
+            [symbol, pair] = crypto.split('/');
+        } else {
+            symbol = crypto;
+            pair = currentPair;
+        }
+        
+        const key = `${symbol}/${pair}`;
+        if (priceCache[key]) {
+            updateCryptoPrice(key, priceCache[key].price, priceCache[key].change, priceCache[key].volume, priceCache[key].source);
         }
     });
-}
-
-
-function toggleSearchModal(forceShow) {
-    console.log(`Toggle search modal (forceShow: ${forceShow})`);
-    const searchModal = document.getElementById('search-modal');
-    
-    if (!searchModal) {
-        console.error("Search modal element not found!");
-        return;
-    }
-    
-    // Check current display state
-    const isCurrentlyShown = searchModal.style.display === 'block';
-    
-    // Determine if we should show or hide
-    const shouldShow = forceShow === undefined ? !isCurrentlyShown : forceShow;
-    
-    if (shouldShow && !isCurrentlyShown) {
-        // SHOW the modal
-        console.log("Showing search modal");
-        searchModal.style.display = 'block';
-        
-        // Update status
-        const statusEl = document.getElementById('search-status');
-        if (statusEl) {
-            if (!cryptoList || Object.keys(cryptoList).length === 0) {
-                statusEl.textContent = "Loading coin data...";
-                // Load crypto list if not loaded
-                loadCryptoList().then(() => {
-                    if (Object.keys(cryptoList).length > 0) {
-                        statusEl.textContent = `${Object.keys(cryptoList).length} coins available`;
-                    }
-                });
-            } else {
-                statusEl.textContent = `${Object.keys(cryptoList).length} coins available`;
-            }
-        }
-        
-        // Reset and focus search input
-        const searchInput = document.getElementById('search-input');
-        if (searchInput) {
-            searchInput.value = '';
-            setTimeout(() => searchInput.focus(), 100);
-        }
-        
-        // Clear previous results
-        const searchResults = document.getElementById('search-results');
-        if (searchResults) {
-            searchResults.innerHTML = '';
-        }
-        
-    } else if (!shouldShow && isCurrentlyShown) {
-        // HIDE the modal
-        console.log("Hiding search modal");
-        searchModal.style.display = 'none';
-    }
 }
 
 // Update pair buttons UI
@@ -1972,92 +976,93 @@ function updatePairButtons(activePair) {
 }
 
 // Function to refresh the crypto list UI
-function refreshCryptoList() {
-    // Clear current list
+async function refreshCryptoList() {
     const cryptoListEl = document.getElementById('crypto-list');
     cryptoListEl.innerHTML = '';
-    
-    // Create placeholder items while loading
-    trackedCryptos.forEach(crypto => {
-        let symbol, pair;
-        
-        if (crypto.includes('/')) {
-            [symbol, pair] = crypto.split('/');
-        } else {
-            symbol = crypto;
-            pair = currentPair;
-        }
-        const coin = cryptoList[symbol] || fallbackCoins[symbol];
+    const listCryptos = await JSON.parse(fs.readFileSync(path.join(__dirname, 'public', 'data.json'), 'utf8'));
+    console.log("listCryptos", listCryptos);
+    await listCryptos.forEach(crypto => {
+        const symbol = crypto.Symbol;
+        const pair = 'USDT';
         const price = lastPrices[`${symbol}/${pair}`] || '...';
         const cacheKey = `${symbol}/${pair}`;
         const priceData = priceCache[cacheKey] || {};
         
-        // Create the container with item and chart area
         const container = document.createElement('div');
         container.className = 'crypto-item-container';
         
-        // Create the main item
         const item = document.createElement('div');
         item.className = 'crypto-item';
         item.dataset.symbol = symbol;
         item.dataset.pair = pair;
         let imgUrl = 'https://via.placeholder.com/24';
-        if (coin.ImageUrl) {
-            imgUrl = `https://www.cryptocompare.com${coin.ImageUrl}`;
+        if (crypto.ImageUrl) {
+            imgUrl = `https://www.cryptocompare.com${crypto.ImageUrl}`;
         }
-        
-        // Add HTML content with exchange and volume
+
         item.innerHTML = `
             <img src="${imgUrl}" class="coin-icon">
             <div class="crypto-info">
-                <div class="crypto-exchange-badge" style="display: inline-block; font-size: 0.7rem; background: rgba(0,0,0,0.1);">${(priceData.source || 'binance-ws').toUpperCase()}</div>
+                <div class="crypto-exchange-badge" style="display: inline-block; font-size: 0.7rem; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 3px; margin-bottom: 3px; font-weight: bold;">${(priceData.source || 'LOADING...').toUpperCase()}</div>
                 <div class="crypto-name"><strong>${symbol}</strong>/${pair}</div>
-                <div class="crypto-volume"></div>
+                <div class="crypto-volume">${formatVolume(priceData.volume || 0)}</div>
             </div>
             <div class="crypto-price">$ ${price}</div>
             <div class="crypto-change">${formatChange(priceData.change || 0)}</div>
             <button class="btn remove" data-symbol="${symbol}" data-pair="${pair}" style="position: absolute; top: 1px; right: 1px;">×</button>
         `;
-        
-        // Add click event to show chart
+
         item.addEventListener('click', (e) => {
-            if (e.target.classList.contains('remove')) return; // Don't trigger on remove button
+            // Ignore if clicking the remove button
+            if (e.target.classList.contains('remove')) return;
             
-            // Toggle active state on this item
+            // Get all crypto items and remove active class from others
             const allItems = document.querySelectorAll('.crypto-item');
             allItems.forEach(i => {
-                if (i !== item) i.classList.remove('active');
+                if (i !== item) {
+                    i.classList.remove('active');
+                    // Also collapse their charts
+                    const parentContainer = i.closest('.crypto-item-container');
+                    if (parentContainer) {
+                        const chart = parentContainer.querySelector('.chart-area');
+                        if (chart) {
+                            chart.classList.remove('visible');
+                        }
+                    }
+                }
             });
+        
+            // Toggle active state for clicked item
             item.classList.toggle('active');
-            
-            // Toggle chart visibility
+        
+            // Handle chart visibility
             const chartArea = container.querySelector('.chart-area');
             const isVisible = chartArea.classList.contains('visible');
             
-            // Hide all other charts
-            const allCharts = document.querySelectorAll('.chart-area');
-            allCharts.forEach(chart => {
-                if (chart !== chartArea) chart.classList.remove('visible');
-            });
-            
-            // Toggle this chart
+            // Toggle chart visibility
             chartArea.classList.toggle('visible', !isVisible);
-            
-            // Load chart data if needed
+        
+            // Load chart data if not already loaded
             if (!isVisible && !chartArea.dataset.loaded) {
                 chartArea.dataset.loaded = 'true';
                 displayEmbeddedChart(symbol, pair, chartArea);
             }
-        });
         
-        // Add remove button event
+            // Initialize drag and drop functionality
+            initDragAndDrop();
+        
+            // Scroll chart into view if it's being shown
+            if (!isVisible) {
+                chartArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        });
+
         const removeBtn = item.querySelector('.remove');
         removeBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             removeCrypto(`${symbol}/${pair}`);
         });
-        
-        // Create chart area (initially hidden)
+
         const chartArea = document.createElement('div');
         chartArea.className = 'chart-area';
         chartArea.innerHTML = `
@@ -2069,44 +1074,36 @@ function refreshCryptoList() {
                 <canvas class="price-chart" id="chart-${symbol}${pair}"></canvas>
             </div>
         `;
-        
-        // Add close button for chart
+
         chartArea.querySelector('.chart-close').addEventListener('click', (e) => {
             e.stopPropagation();
             chartArea.classList.remove('visible');
             item.classList.remove('active');
         });
-        
-        // Add to container
+
         container.appendChild(item);
         container.appendChild(chartArea);
-        
-        // Add to main list
         cryptoListEl.appendChild(container);
     });
-    
-    // Setup WebSocket with new list
+
     setupBinanceWebSocket();
 }
 
 function updateCryptoPrice(cryptoKey, price, changePercent, volume, source) {
     const [symbol, pair] = cryptoKey.split('/');
-    // Find the DOM element for this crypto
+    
     const cryptoElement = document.querySelector(`.crypto-item[data-symbol="${symbol}"][data-pair="${pair}"]`);
     if (!cryptoElement) return;
     
-    // Update price display
     const priceElement = cryptoElement.querySelector('.crypto-price');
     if (priceElement) {
         priceElement.textContent = `$` + formatPrice(price);
     }
     
-    // Update change percentage
     const changeElement = cryptoElement.querySelector('.crypto-change');
     if (changeElement && !isNaN(changePercent)) {
         changeElement.textContent = formatChange(changePercent);
         
-        // Add color based on change direction
         changeElement.classList.remove('up', 'down', 'neutral');
         if (changePercent > 0) {
             changeElement.classList.add('up');
@@ -2117,33 +1114,19 @@ function updateCryptoPrice(cryptoKey, price, changePercent, volume, source) {
         }
     }
     
-    // Update exchange badge
     const exchangeBadge = cryptoElement.querySelector('.crypto-exchange-badge');
     if (exchangeBadge && source) {
         exchangeBadge.textContent = source.toUpperCase();
-        // Add a subtle animation when exchange changes
         exchangeBadge.style.animation = 'none';
-        exchangeBadge.offsetHeight; // Trigger reflow
+        exchangeBadge.offsetHeight;
         exchangeBadge.style.animation = 'pulse 0.5s';
     }
     
-    // Update volume display
     const volumeElement = cryptoElement.querySelector('.crypto-volume');
     if (volumeElement) {
-        try {
-            const formattedVolume = formatVolume(volume);
-            volumeElement.textContent = formattedVolume;
-        } catch (e) {
-            console.error('Volume formatting error:', {
-                cryptoKey,
-                volume,
-                error: e.message
-            });
-            volumeElement.textContent = '---';
-        }
+        volumeElement.textContent = formatVolume(volume || 0);
     }
     
-    // Store all data in price cache
     if (!priceCache[cryptoKey]) {
         priceCache[cryptoKey] = {};
     }
@@ -2156,88 +1139,23 @@ function updateCryptoPrice(cryptoKey, price, changePercent, volume, source) {
         volume: volume || priceCache[cryptoKey]?.volume || 0
     };
     
-    // Store in last prices cache
     lastPrices[cryptoKey] = price;
+
+    const { ipcRenderer } = require('electron');
+    const priceData = {};
+    for (const key in priceCache) {
+        const [sym, pr] = key.split('/');
+        if (pr === 'USDT') {  // Only show USDT pairs in tooltip
+            priceData[sym] = {
+                price: priceCache[key].price,
+                change: priceCache[key].change
+            };
+        }
+    }
+    
+    ipcRenderer.send('price-update', priceData);
 }
 
-// Add sorting function
-function sortCryptoList(method) {
-    sortMethod = method;
-    const cryptoListEl = document.getElementById('crypto-list');
-    
-    // Get all containers and convert to array for sorting
-    const containers = Array.from(cryptoListEl.querySelectorAll('.crypto-item-container'));
-    
-    // Sort based on selected method
-    containers.sort((a, b) => {
-        const itemA = a.querySelector('.crypto-item');
-        const itemB = b.querySelector('.crypto-item');
-        
-        const symbolA = itemA.getAttribute('data-symbol');
-        const symbolB = itemB.getAttribute('data-symbol');
-        const pairA = itemA.getAttribute('data-pair');
-        const pairB = itemB.getAttribute('data-pair');
-        
-        const keyA = `${symbolA}/${pairA}`;
-        const keyB = `${symbolB}/${pairB}`;
-        
-        switch (method) {
-            case 'volumeDesc':
-                // Get volume from priceCache or default to 0
-                const volumeA = priceCache[keyA]?.volume || 0;
-                const volumeB = priceCache[keyB]?.volume || 0;
-                
-                console.log(`Comparing volumes: ${keyA}=${volumeA} vs ${keyB}=${volumeB}`);
-                
-                // Sort by volume (highest first)
-                return volumeB - volumeA;
-                
-            case 'priceDesc':
-                // Get price from priceCache or default to 0
-                const priceA = priceCache[keyA]?.price || 0;
-                const priceB = priceCache[keyB]?.price || 0;
-                
-                // Sort by price (highest first)
-                return priceB - priceA;
-                
-            case 'priceAsc':
-                // Get price from priceCache or default to 0  
-                const price1 = priceCache[keyA]?.price || 0;
-                const price2 = priceCache[keyB]?.price || 0;
-                
-                // Sort by price (lowest first)
-                return price1 - price2;
-                
-            case 'changeDesc':
-                // Get change from priceCache or default to 0
-                const changeA = priceCache[keyA]?.change || 0;
-                const changeB = priceCache[keyB]?.change || 0;
-                
-                // Sort by change percentage (highest first)
-                return changeB - changeA;
-                
-            case 'changeAsc':
-                // Get change from priceCache or default to 0
-                const change1 = priceCache[keyA]?.change || 0;
-                const change2 = priceCache[keyB]?.change || 0;
-                
-                // Sort by change percentage (lowest first)
-                return change1 - change2;
-                
-            // Default - sort alphabetically
-            default:
-                return keyA.localeCompare(keyB);
-        }
-    });
-    
-    // Update DOM with sorted containers
-    containers.forEach(container => {
-        cryptoListEl.appendChild(container);
-    });
-    
-    // Update sort buttons UI
-    updateSortButtonsUI(method);
-}
 
 // Add this debug function to help troubleshoot volume data
 function debugVolumeData() {
@@ -2319,225 +1237,37 @@ ipcRenderer.on('preferences', (event, preferences) => {
 });
 
 async function loadCryptoList() {
-    console.log("Loading cryptocurrency list...");
-    
-    // Update status
     const statusEl = document.getElementById('search-status');
     if (statusEl) statusEl.textContent = "Loading coin data...";
     
     try {
-        // Try the API with a timeout
         const response = await axios.get('https://min-api.cryptocompare.com/data/all/coinlist?summary=true', {
             timeout: 10000 // 10 second timeout
         });
         
         if (response.data && response.data.Data) {
             cryptoList = response.data.Data;
-            const coinCount = Object.keys(cryptoList).length;
-            console.log(`Successfully loaded ${coinCount} cryptocurrencies`);
-            
-            // Check a sample coin to verify data structure
-            const sampleKey = Object.keys(cryptoList)[0];
-            console.log("Sample coin data:", sampleKey, cryptoList[sampleKey]);
-            
+            const coinCount = Object.keys(cryptoList).length;            
             if (statusEl) statusEl.textContent = `${coinCount} coins available for search`;
             return true;
         } else {
             console.error("Invalid API response structure:", response.data);
-            console.log("Using fallback coins");
             cryptoList = fallbackCoins;
             if (statusEl) statusEl.textContent = "Using top cryptocurrencies (API unavailable)";
             return true;
         }
     } catch (error) {
         console.error("Failed to load cryptocurrency list:", error);
-        console.log("Using fallback coin list");
         cryptoList = fallbackCoins;
         if (statusEl) statusEl.textContent = "Using top cryptocurrencies (API unavailable)";
         return true;
     }
 }
 
-function searchCryptos(query) {
-    console.log(`Search query: "${query}"`);
-    const searchResults = document.getElementById('search-results');
-    const statusEl = document.getElementById('search-status');
-    
-    if (!query || query.length < 2) {
-        searchResults.innerHTML = '';
-        if (statusEl) statusEl.textContent = "Enter at least 2 characters to search";
-        return;
-    }
-    
-    // Check if crypto list is loaded properly
-    if (!cryptoList || Object.keys(cryptoList).length === 0) {
-        console.warn("Crypto list is empty, using fallback coins");
-        cryptoList = fallbackCoins;
-    }
-    
-    // Normalize query
-    query = query.toLowerCase().trim();
-    if (statusEl) statusEl.textContent = `Searching for "${query}"...`;
-    
-    // Show searching indicator
-    searchResults.innerHTML = '<div class="search-loading">Searching...</div>';
-    
-    try {
-        // Filter cryptocurrencies
-        const matches = [];
-        
-        // First check fallback coins for popular options
-        for (const symbol of Object.keys(fallbackCoins)) {
-            if (symbol.toLowerCase().includes(query) || 
-                fallbackCoins[symbol].CoinName.toLowerCase().includes(query)) {
-                matches.push(symbol);
-            }
-        }
-        
-        // Then check main crypto list
-        if (matches.length < 5) {
-            for (const symbol of Object.keys(cryptoList)) {
-                if (matches.length >= 5) break;
-                
-                if (!cryptoList[symbol]) continue;
-                if (matches.includes(symbol)) continue;
-                
-                const name = (cryptoList[symbol].CoinName || cryptoList[symbol].Name || 
-                             cryptoList[symbol].name || cryptoList[symbol].fullName || 
-                             '').toLowerCase();
-                const symbolLower = symbol.toLowerCase();
-                
-                if (symbolLower === query || 
-                    symbolLower.includes(query) || 
-                    name.includes(query)) {
-                    matches.push(symbol);
-                }
-            }
-        }
-        
-        // Display results using exchange comparison format
-        if (matches.length === 0) {
-            if (statusEl) statusEl.textContent = `No results found for "${query}"`;
-            searchResults.innerHTML = '<div class="search-no-results">No results found</div>';
-        } else {
-            // Display status
-            if (statusEl) statusEl.textContent = `Found ${matches.length} coins matching "${query}"`;
-            displaySearchResults(matches);
-        }
-        
-    } catch (error) {
-        console.error("Error during search:", error);
-        searchResults.innerHTML = '<div class="search-no-results">Search error. Please try again.</div>';
-        if (statusEl) statusEl.textContent = `Error: ${error.message || "Search failed"}`;
-    }
-}
 
-// Add crypto to tracked list
-function addCrypto(symbol) {
-    if (!trackedCryptos.includes(symbol)) {
-        ipcRenderer.send('add-crypto', symbol);
-    }
-}
-
-function displaySearchResults(matchingSymbols) {
-    const searchResults = document.getElementById('search-results');
-    searchResults.innerHTML = '';
-    
-    if (matchingSymbols.length === 0) {
-        searchResults.innerHTML = '<div class="search-no-results">No results found</div>';
-        return;
-    }
-    
-    // For each matching coin
-    matchingSymbols.forEach(symbol => {
-        const coin = cryptoList[symbol] || fallbackCoins[symbol];
-        const coinName = coin.CoinName || coin.Name || coin.name || symbol;
-        
-        // Create result container
-        const resultItem = document.createElement('div');
-        resultItem.className = 'search-result-item';
-        
-        // Coin header with icon and name
-        let imgUrl = 'https://via.placeholder.com/24';
-        if (coin.ImageUrl) {
-            imgUrl = `https://www.cryptocompare.com${coin.ImageUrl}`;
-        }
-        
-        resultItem.innerHTML = `
-            <div class="search-item-header">
-                <img src="${imgUrl}" onerror="this.src='https://via.placeholder.com/24'" class="coin-icon">
-                <div>
-                    <div class="coin-symbol">${symbol}</div>
-                    <div class="coin-name">${coinName}</div>
-                </div>
-            </div>
-            <div class="pair-options">
-                <div class="pair-option-loading">Loading prices...</div>
-            </div>
-        `;
-        
-        searchResults.appendChild(resultItem);
-        
-        // Fetch prices for the three main pairs
-        fetchCoinPrices(symbol, resultItem);
-    });
-}
-
-async function fetchCoinPrices(symbol, resultElement) {
-    const pairContainer = resultElement.querySelector('.pair-options');
-    const pairs = ['USDT', 'USDC', 'BTC'];
-    
-    try {
-        // Get multiple prices in one API call
-        const response = await axios.get(
-            `https://min-api.cryptocompare.com/data/pricemulti?fsyms=${symbol}&tsyms=${pairs.join(',')}`
-        );
-        
-        if (response.data && response.data[symbol]) {
-            pairContainer.innerHTML = ''; // Clear loading message
-            
-            // Create a button for each pair
-            pairs.forEach(pair => {
-                const price = response.data[symbol][pair];
-                if (price) {
-                    const pairButton = document.createElement('button');
-                    pairButton.className = 'pair-select-option';
-                    pairButton.innerHTML = `
-                        <span class="pair-name">${symbol}/${pair}</span>
-                        <span class="pair-price">${formatPrice(price)}</span>
-                    `;
-                    
-                    // Add click handler for direct addition with feedback
-                    pairButton.addEventListener('click', () => {
-                        // Add the pair
-                        addCryptoWithPair(symbol, pair);
-                        
-                        // Show added confirmation
-                        pairButton.classList.add('added');
-                        pairButton.innerHTML += '<span class="added-badge">Added</span>';
-                        
-                        // Close search modal after a slight delay
-                        setTimeout(() => {
-                            toggleSearchModal(false);
-                        }, 500);
-                    });
-                    
-                    pairContainer.appendChild(pairButton);
-                }
-            });
-            
-            // If we didn't find any prices, show a message
-            if (pairContainer.children.length === 0) {
-                pairContainer.innerHTML = '<div class="pair-option-error">No price data available</div>';
-            }
-            
-        } else {
-            throw new Error("Invalid price data");
-        }
-    } catch (error) {
-        console.error(`Error fetching prices for ${symbol}:`, error);
-        pairContainer.innerHTML = '<div class="pair-option-error">Could not load prices</div>';
-    }
+// Helper function to format price (you can implement your own)
+function formatPrice(price) {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price);
 }
 
 function removeCrypto(symbol) {
@@ -2557,129 +1287,6 @@ function removeCrypto(symbol) {
     ipcRenderer.send('remove-crypto', symbol);
 }
 
-function createPairSelectorModal() {
-    // Check if it already exists
-    if (document.getElementById('pair-selector')) {
-        console.log("Pair selector already exists");
-        return;
-    }
-    
-    console.log("Creating pair selector modal");
-    
-    const modal = document.createElement('div');
-    modal.id = 'pair-selector';
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Select Trading Pair</h3>
-                <button class="btn close-modal">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="selected-coin">
-                    <img id="selected-coin-img" src="https://via.placeholder.com/30" class="coin-icon">
-                    <div id="selected-coin-name">Selected Coin</div>
-                </div>
-                
-                <div class="pair-options">
-                    <div class="pair-option-group">
-                        <h4>Fiat/Stablecoin Pairs</h4>
-                        <div class="pair-buttons" id="fiat-pairs">
-                            <button class="pair-select-btn" data-pair="USDT">USDT</button>
-                            <button class="pair-select-btn" data-pair="USDC">USDC</button>
-                            <button class="pair-select-btn" data-pair="BUSD">BUSD</button>
-                            <button class="pair-select-btn" data-pair="USD">USD</button>
-                            <button class="pair-select-btn" data-pair="EUR">EUR</button>
-                        </div>
-                    </div>
-                    
-                    <div class="pair-option-group">
-                        <h4>Crypto Pairs</h4>
-                        <div class="pair-buttons" id="crypto-pairs">
-                            <button class="pair-select-btn" data-pair="BTC">BTC</button>
-                            <button class="pair-select-btn" data-pair="ETH">ETH</button>
-                            <button class="pair-select-btn" data-pair="BNB">BNB</button>
-                        </div>
-                    </div>
-                    
-                    <div class="custom-pair-input">
-                        <input type="text" id="custom-pair-input" placeholder="Enter custom pair...">
-                        <button id="custom-pair-btn">Add</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    console.log("Pair selector modal created and added to DOM");
-    
-    // Add event listeners
-    modal.querySelector('.close-modal').addEventListener('click', () => {
-        modal.classList.remove('visible');
-    });
-    
-    // Handle pair selection
-    modal.querySelectorAll('.pair-select-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const pair = btn.getAttribute('data-pair');
-            const symbol = modal.getAttribute('data-symbol');
-            console.log(`Selected pair: ${symbol}/${pair}`);
-            addCryptoWithPair(symbol, pair);
-            modal.classList.remove('visible');
-        });
-    });
-    
-    // Handle custom pair
-    modal.querySelector('#custom-pair-btn').addEventListener('click', () => {
-        const customPair = modal.querySelector('#custom-pair-input').value.trim().toUpperCase();
-        if (customPair) {
-            const symbol = modal.getAttribute('data-symbol');
-            console.log(`Custom pair selected: ${symbol}/${customPair}`);
-            addCryptoWithPair(symbol, customPair);
-            modal.classList.remove('visible');
-        }
-    });
-    
-    // Enter key for custom pair
-    modal.querySelector('#custom-pair-input').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            modal.querySelector('#custom-pair-btn').click();
-        }
-    });
-}
-
-// Update the addCryptoWithPair function
-
-function addCryptoWithPair(symbol, pair) {
-    // Instead of changing the global pair, just add this specific combination
-    const combinedSymbol = `${symbol}/${pair}`;
-    
-    // Don't allow self-pairs
-    if (symbol === pair) {
-        console.error(`Invalid self-pair: ${symbol}/${pair}`);
-        alert(`Invalid pair: ${symbol}/${pair} - You cannot track a coin against itself.`);
-        return;
-    }
-    
-    // Add to tracked cryptos if not already there
-    if (!trackedCryptos.includes(combinedSymbol)) {
-        console.log(`Adding ${combinedSymbol} to tracked cryptos`);
-        
-        // Add note about USD pairs
-        if (pair === 'USD') {
-            console.log('Note: USD pairs will be mapped to USDT for Binance data');
-        }
-        
-        ipcRenderer.send('add-crypto', combinedSymbol);
-        
-        // Force refresh the crypto list to show the new item immediately
-        if (trackedCryptos.indexOf(combinedSymbol) === -1) {
-            trackedCryptos.push(combinedSymbol);
-            refreshCryptoList();
-        }
-    }
-}
 
 // Add this function to clean up any invalid pairs
 function cleanupInvalidPairs() {
@@ -2770,37 +1377,3 @@ function removeGhostEntries() {
 
   // Add this function to apply the black theme
 const applyDarkTheme = require('./src/component/applyDarkTheme');
-
-// Function to update the taskbar icon based on coin state
-function updateTaskbarIcon(coinState) {
-    let iconPath;
-
-    // Determine the icon based on the coin state
-    switch (coinState) {
-        case 'up':
-            iconPath = 'path/to/icon-up.png'; // Path to the icon for price increase
-            break;
-        case 'down':
-            iconPath = 'path/to/icon-down.png'; // Path to the icon for price decrease
-            break;
-        case 'stable':
-            iconPath = 'path/to/icon-stable.png'; // Path to the icon for stable price
-            break;
-        default:
-            iconPath = 'path/to/default-icon.png'; // Default icon
-            break;
-    }
-
-    // Update the taskbar icon
-    const { app } = require('electron');
-    const mainWindow = app.mainWindow; // Reference to your main window
-    mainWindow.setOverlayIcon(iconPath, `Coin is ${coinState}`);
-}
-
-// Example usage: Call this function whenever the coin state changes
-function onCoinStateChange(newState) {
-    updateTaskbarIcon(newState);
-}
-
-// Call this function with the appropriate state based on your logic
-onCoinStateChange('up'); // Example: when the coin price goes up

@@ -18,6 +18,28 @@ let preferences = {
   theme: 'dark'
 };
 
+let lastPriceInfo = {};
+
+ipcMain.on('price-update', (event, priceData) => {
+    lastPriceInfo = priceData;
+    updateTrayTooltip();
+});
+
+function updateTrayTooltip() {
+  if (!tray) return;
+  
+  let tooltipText = 'Coin Tracker\n';
+  
+  for (const [symbol, data] of Object.entries(lastPriceInfo)) {
+      const price = typeof data.price === 'number' ? data.price.toFixed(2) : data.price;
+      const change = typeof data.change === 'number' ? data.change.toFixed(2) : data.change;
+      const changeSymbol = change >= 0 ? '↑' : '↓';
+      tooltipText += `\n${symbol}: $${price} ${changeSymbol}${Math.abs(change)}%`;
+  }
+  
+  tray.setToolTip(tooltipText);
+}
+
 const prefsPath = path.join(app.getPath('userData'), 'preferences.json');
 try {
   if (fs.existsSync(prefsPath)) {
@@ -59,6 +81,7 @@ function createWindow() {
 
   mainWindow = new BrowserWindow({
     width: preferences.size.width,
+    skipTaskbar: false,
     height: preferences.size.height,
     x: preferences.position.x,
     y: preferences.position.y,
@@ -135,7 +158,7 @@ function createTray() {
     
     // Create the tray icon
     tray = new Tray(trayIcon);
-    tray.setToolTip('Coin Tracker');
+    tray.setToolTip('Loading ...');
     
     // Add context menu to tray
     updateTrayMenu();
@@ -234,6 +257,11 @@ function updateTrayMenu() {
 app.whenReady().then(() => {
   createWindow();
   createTray(); // Add this line to create the tray icon
+  
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'Quit', click: () => app.quit() }
+  ]);
+  tray.setContextMenu(contextMenu);
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -423,14 +451,14 @@ ipcMain.on('set-decimal-places', (event, places) => {
   event.reply('decimal-places-updated', places);
 });
 
-// ipcMain.on('get-exchange-order', (event) => {
-//     event.reply('exchange-order', preferences.exchangeOrder || 
-//       ['binance', 'coinbase', 'kraken', 'okx', 'mexc', 'gate', 'bitget', 'kucoin', 'bybit', 'htx']);
-// });
+ipcMain.on('get-exchange-order', (event) => {
+    event.reply('exchange-order', preferences.exchangeOrder || 
+      ['binance', 'coinbase', 'kraken', 'okx', 'mexc', 'gate', 'bitget', 'kucoin', 'bybit', 'htx']);
+});
 
 ipcMain.on('add-crypto', (event, symbol) => {
   if (!preferences.cryptos.includes(symbol)) {
-    preferences.cryptos.push(symbol);
+    preferences.cryptos.unshift(symbol);
     savePreferences();
     event.reply('cryptos-updated', preferences.cryptos);
   }

@@ -1,3 +1,5 @@
+const createPairSelectorModal = require('./createPairSelectorModal');
+
 // Show the pair selector for a specific coin
 function showPairSelector(symbol, coinName) {
     console.log(`Showing pair selector for ${symbol} (${coinName})`);
@@ -46,6 +48,7 @@ async function displayPriceChart(symbol, pair) {
         chartContainer.innerHTML = `
             <div class="chart-header">
                 <div class="chart-title">Loading chart...</div>
+                <button class="chart-minimize">_</button>
                 <button class="chart-close">×</button>
             </div>
             <canvas id="price-chart" class="price-chart"></canvas>
@@ -56,6 +59,11 @@ async function displayPriceChart(symbol, pair) {
         // Add close button event
         chartContainer.querySelector('.chart-close').addEventListener('click', () => {
             chartContainer.classList.remove('visible');
+        });
+
+        // Add minimize button event
+        chartContainer.querySelector('.chart-minimize').addEventListener('click', () => {
+            chartContainer.classList.toggle('minimized');
         });
     }
     
@@ -96,7 +104,6 @@ async function displayPriceChart(symbol, pair) {
     }
 }
 
-// <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 function initializeChart(timestamps, prices, symbol, pair) {
     // If Chart.js is not available, load it dynamically
     if (!window.Chart) {
@@ -109,7 +116,6 @@ function initializeChart(timestamps, prices, symbol, pair) {
     
     createChart(timestamps, prices, symbol, pair);
 }
-
 
 function createChart(timestamps, prices, symbol, pair) {
     const canvas = document.getElementById('price-chart');
