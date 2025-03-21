@@ -74,7 +74,7 @@ function searchCryptos(query) {
                 style.id = 'exchange-styles';
                 style.textContent = `
                 .exchange-results-container {
-                    background-color: #292929;
+                    background-color: var(--bg-color);
                     height: calc(100vh - 200px); /* Full height minus 100px */
                     overflow-y: auto;
                     border-radius: 8px;
@@ -208,6 +208,14 @@ async function addCryptoWithExchange(symbol, pair, exchange) {
 }
 
 async function displayAllExchangeData(symbols, container) {
+    const dataPath = path.join(__dirname, '..', '..', 'public', 'data.json');
+    let currentData = [];
+    try {
+        currentData = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+    } catch (error) {
+        console.error('Error reading data.json:', error);
+    }
+    
     for (const symbol of symbols) {
         const tokenSection = document.createElement('div');
         tokenSection.className = 'token-section';
@@ -250,6 +258,17 @@ async function displayAllExchangeData(symbols, container) {
                 const volume = result.data.volume ? formatVolume(result.data.volume) : '0';
                 const price = result.data.price.toFixed(result.data.price < 1 ? 6 : 2);
                 
+                // Check if this symbol is already added
+                const isAdded = currentData.some(item => 
+                    item.Symbol === symbol && 
+                    item.exchange === result.exchange
+                );
+        
+                const buttonText = isAdded ? 'Added ✓' : 'Add';
+                const buttonStyle = isAdded ? 
+                    'background-color: #1f4442; color: #35b3a5; cursor: not-allowed;' : 
+                    'background-color: #1a3a39; color: #35b3a5;';
+                
                 const exchangeItemHTML = `
                     <div class="exchange-item">
                         <div class="token-info">
@@ -267,7 +286,14 @@ async function displayAllExchangeData(symbols, container) {
                             <div class="token-price">≈$${price}</div>
                             <div class="price-change">${result.data.change ? result.data.change.toFixed(2) + '%' : ''}</div>
                         </div>
-                        <button class="add-btn" data-symbol="${symbol}" data-pair="USDT" data-exchange="${result.exchange}">Add</button>
+                        <button class="add-btn" 
+                            data-symbol="${symbol}" 
+                            data-pair="USDT" 
+                            data-exchange="${result.exchange}"
+                            ${isAdded ? 'disabled' : ''}
+                            style="${buttonStyle}">
+                            ${buttonText}
+                        </button>
                     </div>
                 `;
                 exchangeList.insertAdjacentHTML('beforeend', exchangeItemHTML);
@@ -305,13 +331,12 @@ async function displayAllExchangeData(symbols, container) {
                             };
             
                             // Add to beginning of array if not already exists
-                            if (!currentData.some(item => item.Symbol === symbol)) {
+                            if (!currentData.some(item => item.Symbol === symbol && item.exchange === exchange)) {
                                 currentData.unshift(newToken);
                                 
                                 // Write back to data.json
                                 fs.writeFileSync(dataPath, JSON.stringify(currentData, null, 2));
                             }
-                            refreshCryptoList();
                             if (exchange && exchange !== 'Global') {
                                 await addCryptoWithExchange(symbol, pair, exchange);
                                 localStorage.setItem(`preferred_exchange_${symbol}/${pair}`, exchange);
@@ -323,35 +348,7 @@ async function displayAllExchangeData(symbols, container) {
                             btn.textContent = 'Added ✓';
                             btn.style.backgroundColor = '#1f4442';
             
-                            // Create and add new crypto element to main screen
-                            const cryptoContainer = document.querySelector('.crypto-list');
-                            if (cryptoContainer) {
-                                const newCryptoElement = document.createElement('div');
-                                newCryptoElement.className = 'crypto-item';
-                                newCryptoElement.setAttribute('data-symbol', symbol);
-                                newCryptoElement.setAttribute('data-pair', pair);
-            
-                                let imgUrl = 'https://via.placeholder.com/24';
-                                if (coin && coin.ImageUrl) {
-                                    imgUrl = `https://www.cryptocompare.com${coin.ImageUrl}`;
-                                }
-                                
-                                newCryptoElement.innerHTML = `
-                                    <div class="crypto-info">
-                                        <img src="${imgUrl}" class="crypto-icon" onerror="this.src='https://via.placeholder.com/24'">
-                                        <div class="crypto-details">
-                                            <div class="crypto-symbol">${symbol}</div>
-                                            <div class="crypto-exchange">${exchange.toUpperCase()}</div>
-                                        </div>
-                                    </div>
-                                    <div class="crypto-price">Loading...</div>
-                                `;
-                                cryptoContainer.insertBefore(newCryptoElement, cryptoContainer.firstChild);
-            
-                                if (window.updatePrices) {
-                                    window.updatePrices();
-                                }
-                            }
+                            await refreshCryptoList();
             
                             setTimeout(() => {
                                 toggleSearchModal(false);

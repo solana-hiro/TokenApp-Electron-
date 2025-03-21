@@ -103,7 +103,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Setup sorting controls - THIS IS THE CRITICAL LINE
     setupSortingControls();
-    
+    initializeChartArea();
+    refreshCryptoList(); 
     console.log("Initialization complete");
 
 });
@@ -448,6 +449,33 @@ async function fetchPriceFromExchange(exchange, base, quote, signal) {
     return result;
 }
 
+function initializeChartArea() {
+    const chartArea = document.querySelector('.chart-area');
+    if (!chartArea) return;
+
+    // Clear existing content and set up the structure
+    chartArea.innerHTML = `
+        <div class="chart-header">
+            <div class="chart-title">Select a cryptocurrency</div>
+            <button class="chart-minimize">_</button>
+            <button class="chart-close">×</button>
+        </div>
+        <canvas class="price-chart"></canvas>
+    `;
+
+    // Add event listeners for minimize and close buttons
+    const minimizeBtn = chartArea.querySelector('.chart-minimize');
+    const closeBtn = chartArea.querySelector('.chart-close');
+
+    minimizeBtn?.addEventListener('click', () => {
+        chartArea.classList.toggle('minimized');
+    });
+
+    closeBtn?.addEventListener('click', () => {
+        chartArea.classList.remove('visible');
+    });
+}
+
 function addVolumeTracking() {
     // Update the fetchPriceFromExchange function to always return volume data when available
     const oldFetchPrice = fetchPriceFromExchange;
@@ -611,18 +639,18 @@ if (cleanupBtn) {
     
     // Close search modal button
     const closeSearchBtn = document.getElementById('close-search-modal');
-if (closeSearchBtn) {
-    closeSearchBtn.addEventListener('click', () => {
-        console.log("Close search button clicked");
-        try {
-            toggleSearchModal(false);
-        } catch (error) {
-            console.error("Error closing search modal:", error);
-        }
-    });
-} else {
-    console.error("Close search button not found");
-}
+    if (closeSearchBtn) {
+        closeSearchBtn.addEventListener('click', () => {
+            console.log("Close search button clicked");
+            try {
+                toggleSearchModal(false);
+            } catch (error) {
+                console.error("Error closing search modal:", error);
+            }
+        });
+    } else {
+        console.error("Close search button not found");
+    }
     
     // Search input handling
     const searchInput = document.getElementById('search-input');
@@ -981,98 +1009,146 @@ async function refreshCryptoList() {
     cryptoListEl.innerHTML = '';
     const listCryptos = await JSON.parse(fs.readFileSync(path.join(__dirname, 'public', 'data.json'), 'utf8'));
     console.log("listCryptos", listCryptos);
-    await listCryptos.forEach(crypto => {
+    const fetchPromises = listCryptos.map(async (crypto) => {
         const symbol = crypto.Symbol;
         const pair = 'USDT';
-        const price = lastPrices[`${symbol}/${pair}`] || '...';
-        const cacheKey = `${symbol}/${pair}`;
-        const priceData = priceCache[cacheKey] || {};
+        const exchange = crypto.exchange;
         
-        const container = document.createElement('div');
-        container.className = 'crypto-item-container';
-        
-        const item = document.createElement('div');
-        item.className = 'crypto-item';
-        item.dataset.symbol = symbol;
-        item.dataset.pair = pair;
-        let imgUrl = 'https://via.placeholder.com/24';
-        if (crypto.ImageUrl) {
-            imgUrl = `https://www.cryptocompare.com${crypto.ImageUrl}`;
-        }
-
-        item.innerHTML = `
-            <img src="${imgUrl}" class="coin-icon">
-            <div class="crypto-info">
-                <div class="crypto-exchange-badge" style="display: inline-block; font-size: 0.7rem; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 3px; margin-bottom: 3px; font-weight: bold;">${(priceData.source || 'LOADING...').toUpperCase()}</div>
-                <div class="crypto-name"><strong>${symbol}</strong>/${pair}</div>
-                <div class="crypto-volume">${formatVolume(priceData.volume || 0)}</div>
-            </div>
-            <div class="crypto-price">$ ${price}</div>
-            <div class="crypto-change">${formatChange(priceData.change || 0)}</div>
-            <button class="btn remove" data-symbol="${symbol}" data-pair="${pair}" style="position: absolute; top: 1px; right: 1px;">×</button>
-        `;
-
-        item.addEventListener('click', (e) => {
-            if (e.target.classList.contains('remove')) return;
-            const allItems = document.querySelectorAll('.crypto-item');
-            allItems.forEach(i => {
-                if (i !== item) i.classList.remove('active');
-            });
-            item.classList.toggle('active');
-            displayEmbeddedChart(symbol, pair, chartArea);
-            initDragAndDrop();
-        });
-
-        const removeBtn = item.querySelector('.remove');
-        removeBtn.addEventListener('click', async (e) => {
-            e.stopPropagation();
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
             
-            try {
-                // Read the current data from data.json
-                const dataPath = path.join(__dirname, 'public', 'data.json');
-                const currentData = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
-                
-                // Filter out the token to be removed
-                const updatedData = currentData.filter(item => 
-                    !(item.Symbol === symbol)
-                );
-                
-                // Write the updated data back to data.json
-                fs.writeFileSync(dataPath, JSON.stringify(updatedData, null, 2));
-                
-                // Remove from UI
-                removeCrypto(`${symbol}/${pair}`);
-                
-                // Refresh the crypto list to reflect changes
-                refreshCryptoList();
-                
-            } catch (error) {
-                console.error('Error updating data.json:', error);
-            }
-        });
+            // Fetch real-time data from exchange
+            const priceData = await fetchPriceFromExchange(exchange, symbol, pair, controller.signal);
+            clearTimeout(timeoutId);
+            
+            let imgUrl = crypto.ImageUrl ? 
+                `https://www.cryptocompare.com${crypto.ImageUrl}` : 
+                'https://via.placeholder.com/24';
 
-        chartArea.innerHTML = `
-            <div class="chart-header">
-                <div class="chart-title">${symbol}/${pair} Chart</div>
-                <button class="chart-close">×</button>
-            </div>
-            <div class="chart-body">
-                <canvas class="price-chart" id="chart-${symbol}${pair}"></canvas>
-            </div>
-        `;
+            const container = document.createElement('div');
+            container.className = 'crypto-item-container';
+            
+            const item = document.createElement('div');
+            item.className = 'crypto-item';
+            item.dataset.symbol = symbol;
+            item.dataset.pair = pair;
+            item.dataset.exchange = exchange;
 
-        chartArea.querySelector('.chart-close').addEventListener('click', (e) => {
-            e.stopPropagation();
-            chartArea.classList.remove('visible');
-            item.classList.remove('active');
-        });
+            const price = priceData ? formatPrice(priceData.price) : '...';
+            const change = priceData ? formatChange(priceData.change) : '0.00%';
+            const volume = priceData ? formatVolume(priceData.volume) : '0';
 
-        container.appendChild(item);
-        // container.appendChild(chartArea);
-        cryptoListEl.appendChild(container);
+            item.innerHTML = `
+                <img src="${imgUrl}" class="coin-icon">
+                <div class="crypto-info">
+                    <div class="crypto-exchange-badge" style="display: inline-block; font-size: 0.7rem; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 3px; margin-bottom: 3px; font-weight: bold;">${exchange.toUpperCase()}</div>
+                    <div class="crypto-name"><strong>${symbol}</strong>/${pair}</div>
+                    <div class="crypto-volume">${volume}</div>
+                </div>
+                <div class="crypto-price">${price}</div>
+                <div class="crypto-change ${priceData?.change > 0 ? 'up' : priceData?.change < 0 ? 'down' : ''}">${change}</div>
+                <button class="btn remove" data-symbol="${symbol}" data-pair="${pair}" data-exchange="${exchange}" style="position: absolute; top: 1px; right: 1px;">×</button>
+            `;
+
+            // Add click event for chart display
+            item.addEventListener('click', (e) => {
+                if (e.target.classList.contains('remove')) return;
+                
+                const chartArea = document.querySelector('.chart-area');
+                if (!chartArea) return;
+            
+                // Show the chart area if it's hidden
+                chartArea.classList.add('visible');
+                
+                const allItems = document.querySelectorAll('.crypto-item');
+                allItems.forEach(i => {
+                    if (i !== item) i.classList.remove('active');
+                });
+                item.classList.toggle('active');
+                
+                displayEmbeddedChart(symbol, pair, chartArea);
+                initDragAndDrop();
+            });
+            // Add remove button handler
+            const removeBtn = item.querySelector('.remove');
+            removeBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                try {
+                    const dataPath = path.join(__dirname, 'public', 'data.json');
+                    const currentData = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+                    const updatedData = currentData.filter(item => 
+                        !(item.Symbol === symbol && item.exchange === exchange)
+                    );
+                    fs.writeFileSync(dataPath, JSON.stringify(updatedData, null, 2));
+                    container.remove();
+                } catch (error) {
+                    console.error('Error updating data.json:', error);
+                }
+            });
+
+            container.appendChild(item);
+            return container;
+        } catch (error) {
+            console.error(`Error fetching data for ${symbol} on ${exchange}:`, error);
+            return null;
+        }
+    });
+    const results = await Promise.all(fetchPromises);
+    results.forEach(container => {
+        if (container) {
+            cryptoListEl.appendChild(container);
+        }
+    });
+    setupWebSocketConnections(listCryptos);
+}
+
+function setupWebSocketConnections(cryptos) {
+    // Group by exchange to avoid duplicate connections
+    const exchangeGroups = {};
+    cryptos.forEach(crypto => {
+        if (!exchangeGroups[crypto.exchange]) {
+            exchangeGroups[crypto.exchange] = [];
+        }
+        exchangeGroups[crypto.exchange].push(crypto.Symbol);
     });
 
-    setupBinanceWebSocket();
+    // Set up WebSocket for each exchange
+    Object.entries(exchangeGroups).forEach(([exchange, symbols]) => {
+        switch (exchange) {
+            case 'binance':
+                setupBinanceWebSocket(symbols);
+                break;
+            // Add other exchange WebSocket setups here
+            default:
+                // For exchanges without WebSocket support, set up polling
+                setupPricePolling(exchange, symbols);
+                break;
+        }
+    });
+}
+
+function setupPricePolling(exchange, symbols) {
+    const POLL_INTERVAL = 10000; // 10 seconds
+
+    setInterval(async () => {
+        symbols.forEach(async (symbol) => {
+            try {
+                const priceData = await fetchPriceFromExchange(exchange, symbol, 'USDT');
+                if (priceData) {
+                    updateCryptoPrice(
+                        `${symbol}/USDT`,
+                        priceData.price,
+                        priceData.change,
+                        priceData.volume,
+                        exchange
+                    );
+                }
+            } catch (error) {
+                console.error(`Error polling ${symbol} on ${exchange}:`, error);
+            }
+        });
+    }, POLL_INTERVAL);
 }
 
 function updateCryptoPrice(cryptoKey, price, changePercent, volume, source) {
