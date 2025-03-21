@@ -19,9 +19,13 @@ const displayEmbeddedChart = require('./src/component/displayEmbeddedChart');
 
 const searchCryptos = require('./src/component/searchCryptos');
 const initDragAndDrop = require('./src/component/initDragAndDrop');
-const chartArea = document.querySelector('.chart-area');
 const fs = require('fs');
 const path = require('path');
+
+const { initializeSearch } = require('./src/component/searchCryptos');
+const setupEventListeners = require('./src/component/setupEventListeners');
+
+const applyDarkTheme = require('./src/component/applyDarkTheme');
 
 function initializeTheme() {
     document.documentElement.setAttribute('data-theme', currentTheme);
@@ -52,18 +56,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             switchTheme(btn.dataset.theme);
         });
     });
-
-    // Initialize search functionality
-    const { initializeSearch } = require('./src/component/searchCryptos');
     initializeSearch();
-    
-    // Handle toggle search modal
+
     const addCryptoBtn = document.getElementById('add-crypto');
     if (addCryptoBtn) {
         addCryptoBtn.addEventListener('click', () => {
             toggleSearchModal(true);
-            
-            // Focus the search input when the modal opens
             setTimeout(() => {
                 const searchInput = document.getElementById('search-input');
                 if (searchInput) searchInput.focus();
@@ -92,7 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Load cryptocurrency list for search immediately
     await loadCryptoList();
-    removeGhostEntries();
+    // removeGhostEntries();
     
     cleanupInvalidPairs();
     // Setup Binance WebSocket
@@ -127,64 +125,6 @@ ipcRenderer.on('refresh-data', () => {
     }
   });
   
-// Add this function to diagnose and fix volume data
-function diagnosePriceCache() {
-    console.log("=== PRICE CACHE DIAGNOSIS ===");
-    
-    // Check if price cache has any entries
-    const keys = Object.keys(priceCache);
-    if (keys.length === 0) {
-        console.log("Price cache is empty!");
-        return;
-    }
-    
-    console.log(`Found ${keys.length} entries in cache`);
-    
-    // Show a sample of entries
-    console.log("Sample entries:");
-    keys.slice(0, 3).forEach(key => {
-        console.log(`${key}: `, {
-            price: priceCache[key].price,
-            change: priceCache[key].change,
-            volume: priceCache[key].volume,
-            source: priceCache[key].source,
-            timestamp: new Date(priceCache[key].timestamp).toLocaleTimeString()
-        });
-    });
-    
-    // Check for missing volume data
-    const withoutVolume = keys.filter(key => !priceCache[key].volume);
-    if (withoutVolume.length > 0) {
-        console.log(`${withoutVolume.length} entries have no volume data`);
-        
-        // Add dummy volume data for testing
-        if (keys.length > 0) {
-            console.log("Adding random volume data for testing sort functionality");
-            keys.forEach(key => {
-                // Generate random volume between 100 and 100,000,000
-                const randomVolume = Math.random() * 100000000 + 100;
-                priceCache[key].volume = randomVolume;
-                
-                // Update the DOM if element exists
-                const [symbol, pair] = key.split('/');
-                const element = document.querySelector(`.crypto-item[data-symbol="${symbol}"][data-pair="${pair}"] .crypto-volume`);
-                if (element) {
-                    element.textContent = formatVolume(randomVolume);
-                }
-            });
-            
-            console.log("Random test volumes added. Try sorting now!");
-        }
-    } else {
-        console.log("All entries have volume data");
-    }
-}
-
-// Add this to your document ready handler for debugging
-setTimeout(() => {
-    diagnosePriceCache();
-}, 3000);
-
 async function fetchPriceFromExchange(exchange, base, quote, signal) {
     // Normalize symbol formats
     base = base.toUpperCase();
@@ -568,16 +508,6 @@ function formatVolume(volume) {
     }
 }
 
-setTimeout(() => {
-    debugVolumeData(); // Run after 5 seconds to allow data to load
-    
-    // If no volume data, try to force refresh
-    if (!debugVolumeData()) {
-        console.log("Attempting to refresh price data to get volumes...");
-        setupBinanceWebSocket();
-    }
-}, 5000);
-
 window.addEventListener('error', (event) => {
     console.error('Global error:', event.error);
   });
@@ -587,108 +517,7 @@ ipcRenderer.on('error', (event, error) => {
 console.error('IPC error:', error);
 });
 
-// Create a dedicated function to set up all event listeners
-function setupEventListeners() {
-    console.log("Setting up event listeners");
-    
-    // Close app button
-    const closeAppBtn = document.getElementById('close-app');
-    if (closeAppBtn) {
-        closeAppBtn.addEventListener('click', () => {
-            console.log("Close app clicked");
-            window.close();
-        });
-    } else {
-        console.error("Close app button not found");
-    }
-const cleanupBtn = document.getElementById('cleanup-btn');
-if (cleanupBtn) {
-    cleanupBtn.addEventListener('click', () => {
-        console.log("Manual cleanup initiated");
-        cleanupInvalidPairs();
-    });
-}
-    // Add crypto button
-    const addCryptoBtn = document.getElementById('add-crypto');
-    if (addCryptoBtn) {
-        console.log("Found add crypto button");
-        addCryptoBtn.addEventListener('click', () => {
-            console.log("Add crypto button clicked");
-            toggleSearchModal(true);
-        });
-    } else {
-        console.error("Add crypto button not found");
-    }
-    
-    // Settings button
-    const settingsBtn = document.getElementById('settings-btn');
-    if (settingsBtn) {
-        settingsBtn.addEventListener('click', () => {
-            console.log("Settings button clicked");
-            toggleSettingsPanel();
-        });
-    }
-    
-    // Close settings button
-    const closeSettingsBtn = document.getElementById('close-settings');
-    if (closeSettingsBtn) {
-        closeSettingsBtn.addEventListener('click', () => {
-            toggleSettingsPanel(false);
-        });
-    }
-    
-    // Close search modal button
-    const closeSearchBtn = document.getElementById('close-search-modal');
-    if (closeSearchBtn) {
-        closeSearchBtn.addEventListener('click', () => {
-            console.log("Close search button clicked");
-            try {
-                toggleSearchModal(false);
-            } catch (error) {
-                console.error("Error closing search modal:", error);
-            }
-        });
-    } else {
-        console.error("Close search button not found");
-    }
-    
-    // Search input handling
-    const searchInput = document.getElementById('search-input');
-    if (searchInput) {
-        console.log("Setting up search input handlers");
-        
-        searchInput.addEventListener('input', (e) => {
-            console.log(`Search input changed: "${e.target.value}"`);
-            searchCryptos(e.target.value);
-        });
-        
-        searchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                console.log("Enter pressed in search input");
-                const firstResult = document.querySelector('.search-item');
-                if (firstResult) {
-                    console.log("Selecting first search result");
-                    firstResult.click();
-                }
-            } else if (e.key === 'ArrowDown') {
-                console.log("Arrow down pressed in search input");
-                const firstResult = document.querySelector('.search-item');
-                if (firstResult) {
-                    e.preventDefault();
-                    firstResult.focus();
-                }
-            } else if (e.key === 'Escape') {
-                console.log("Escape pressed in search input");
-                toggleSearchModal(false);
-            }
-        });
-    }
-    
-    // Set up opacity slider and other settings controls
-    setupSettingsControls();
-    
-    console.log("Event listeners setup complete");
-}
+
 
 function setupSortingControls() {
     console.log("Setting up sorting controls");
@@ -707,44 +536,6 @@ function setupSortingControls() {
     });
     
     console.log("Sort buttons configured successfully");
-}
-
-function setupSettingsControls() {
-    // Opacity slider
-    const opacitySlider = document.getElementById('opacity-slider');
-    const opacityValue = document.getElementById('opacity-value');
-    
-    if (opacitySlider && opacityValue) {
-        opacitySlider.addEventListener('input', () => {
-            const value = opacitySlider.value;
-            opacityValue.textContent = value + '%';
-            ipcRenderer.send('change-opacity', parseInt(value));
-        });
-    }
-    
-    // Decimal place selector
-    const decimalBtns = document.querySelectorAll('.decimal-btn');
-    decimalBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            decimalBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            
-            const places = btn.getAttribute('data-places');
-            decimalPlacesMode = places;
-            ipcRenderer.send('set-decimal-places', places);
-            
-            // Refresh all crypto displays to use new decimal format
-            refreshPriceDisplay();
-        });
-    });
-    document.querySelectorAll('.sort-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const method = btn.getAttribute('data-sort');
-        });
-    });
-    
-    // Setup resize functionality
-    setupResize();
 }
 
 function formatChange(changePercent) {
@@ -864,26 +655,6 @@ function toggleSearchModal(forceShow) {
     }
 }
 
-// Toggle settings panel
-function toggleSettingsPanel(show) {
-    console.log(`Toggle settings panel (show: ${show})`);
-    const panel = document.getElementById('settings-panel');
-    if (!panel) {
-        console.error("Settings panel not found!");
-        return;
-    }
-    
-    if (show === undefined) {
-        panel.classList.toggle('visible');
-    } else {
-        if (show) {
-            panel.classList.add('visible');
-        } else {
-            panel.classList.remove('visible');
-        }
-    }
-}
-
 // Listen for preferences from main process
 ipcRenderer.on('preferences', (event, preferences) => {
     trackedCryptos = preferences.cryptos;
@@ -909,87 +680,7 @@ ipcRenderer.on('pair-updated', (event, pair) => {
 const setupBinanceWebSocket = require('./src/component/setupBinanceWebSocket');
 
 // Set up resizing functionality
-function setupResize() {
-    let isResizing = false;
-    let resizeType = '';
-    let startX, startY, startWidth, startHeight;
-    
-    // Helper for mouse down on resize handles
-    function startResize(e, type) {
-        isResizing = true;
-        resizeType = type;
-        startX = e.clientX;
-        startY = e.clientY;
-        
-        const rect = document.querySelector('.widget-container').getBoundingClientRect();
-        startWidth = rect.width;
-        startHeight = rect.height;
-        
-        document.addEventListener('mousemove', doResize);
-        document.addEventListener('mouseup', stopResize);
-    }
-    
-    // Resize logic
-    function doResize(e) {
-        if (!isResizing) return;
-        
-        let newWidth = startWidth;
-        let newHeight = startHeight;
-        
-        if (resizeType === 'right' || resizeType === 'corner') {
-            newWidth = startWidth + (e.clientX - startX);
-        }
-        
-        if (resizeType === 'bottom' || resizeType === 'corner') {
-            newHeight = startHeight + (e.clientY - startY);
-        }
-        
-        // Enforce min/max sizes
-        newWidth = Math.max(200, Math.min(600, newWidth));
-        newHeight = Math.max(300, Math.min(800, newHeight));
-        
-        // Update window size
-        ipcRenderer.send('resize-window', { width: newWidth, height: newHeight });
-    }
-    
-    // Stop resizing
-    function stopResize() {
-        isResizing = false;
-        document.removeEventListener('mousemove', doResize);
-        document.removeEventListener('mouseup', stopResize);
-    }
-    
-    // Set up the resize handle event listeners
-    document.querySelector('.resize-handle-right').addEventListener('mousedown', (e) => {
-        startResize(e, 'right');
-    });
-    
-    document.querySelector('.resize-handle-bottom').addEventListener('mousedown', (e) => {
-        startResize(e, 'bottom');
-    });
-    
-    document.querySelector('.resize-handle-corner').addEventListener('mousedown', (e) => {
-        startResize(e, 'corner');
-    });
-}
 
-// Refresh all price displays when decimal format changes
-function refreshPriceDisplay() {
-    trackedCryptos.forEach(crypto => {
-        let symbol, pair;
-        if (crypto.includes('/')) {
-            [symbol, pair] = crypto.split('/');
-        } else {
-            symbol = crypto;
-            pair = currentPair;
-        }
-        
-        const key = `${symbol}/${pair}`;
-        if (priceCache[key]) {
-            updateCryptoPrice(key, priceCache[key].price, priceCache[key].change, priceCache[key].volume, priceCache[key].source);
-        }
-    });
-}
 
 // Update pair buttons UI
 function updatePairButtons(activePair) {
@@ -1006,10 +697,9 @@ function updatePairButtons(activePair) {
 // Function to refresh the crypto list UI
 async function refreshCryptoList() {
     const cryptoListEl = document.getElementById('crypto-list');
-    cryptoListEl.innerHTML = '';
     const listCryptos = await JSON.parse(fs.readFileSync(path.join(__dirname, 'public', 'data.json'), 'utf8'));
-    console.log("listCryptos", listCryptos);
-    const fetchPromises = listCryptos.map(async (crypto) => {
+    
+    const fetchPromises = listCryptos.map(async (crypto, index) => {
         const symbol = crypto.Symbol;
         const pair = 'USDT';
         const exchange = crypto.exchange;
@@ -1095,11 +785,15 @@ async function refreshCryptoList() {
         }
     });
     const results = await Promise.all(fetchPromises);
+    
+    cryptoListEl.innerHTML = '';
     results.forEach(container => {
         if (container) {
             cryptoListEl.appendChild(container);
         }
     });
+
+
     setupWebSocketConnections(listCryptos);
 }
 
@@ -1218,64 +912,6 @@ function updateCryptoPrice(cryptoKey, price, changePercent, volume, source) {
     ipcRenderer.send('price-update', priceData);
 }
 
-
-// Add this debug function to help troubleshoot volume data
-function debugVolumeData() {
-    console.log("=== VOLUME DATA DEBUG ===");
-    let hasVolume = false;
-    
-    // Check each tracked crypto
-    trackedCryptos.forEach(crypto => {
-        let symbol, pair;
-        
-        if (crypto.includes('/')) {
-            [symbol, pair] = crypto.split('/');
-        } else {
-            symbol = crypto;
-            pair = currentPair;
-        }
-        
-        const cacheKey = `${symbol}/${pair}`;
-        const volData = priceCache[cacheKey]?.volume;
-        
-        if (volData && volData > 0) {
-            hasVolume = true;
-            console.log(`${cacheKey}: Volume = ${volData} (${formatVolume(volData)})`);
-        } else {
-            console.log(`${cacheKey}: No volume data available`);
-        }
-    });
-    
-    if (!hasVolume) {
-        console.warn("No volume data found in any price cache entries!");
-    }
-    
-    return hasVolume;
-}
-
-
-// Format price based on value
-function formatPrice(price) {
-    // If auto mode, use original logic
-    if (decimalPlacesMode === 'auto') {
-        if (price >= 1000) {
-            return price.toLocaleString(undefined, {maximumFractionDigits: 0});
-        } else if (price >= 1) {
-            return price.toLocaleString(undefined, {maximumFractionDigits: 2});
-        } else if (price >= 0.1) {
-            return price.toLocaleString(undefined, {maximumFractionDigits: 4});
-        } else {
-            return price.toLocaleString(undefined, {maximumFractionDigits: 6});
-        }
-    } 
-    // Otherwise use the specified decimal places
-    else {
-        const places = parseInt(decimalPlacesMode);
-        return price.toLocaleString(undefined, {minimumFractionDigits: places, maximumFractionDigits: places});
-    }
-}
-
-
 ipcRenderer.on('preferences', (event, preferences) => {
     
     // Set opacity slider
@@ -1326,29 +962,9 @@ async function loadCryptoList() {
     }
 }
 
-
-// Helper function to format price (you can implement your own)
 function formatPrice(price) {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price);
 }
-
-function removeCrypto(symbol) {
-    console.log(`Removing crypto: ${symbol}`);
-    
-    // Remove from local array immediately
-    const index = trackedCryptos.indexOf(symbol);
-    if (index !== -1) {
-        trackedCryptos.splice(index, 1);
-        console.log(`Removed ${symbol} from local array`);
-        
-        // Refresh the UI immediately
-        refreshCryptoList();
-    }
-    
-    // Also notify the main process to update saved preferences
-    ipcRenderer.send('remove-crypto', symbol);
-}
-
 
 // Add this function to clean up any invalid pairs
 function cleanupInvalidPairs() {
@@ -1385,57 +1001,3 @@ function cleanupInvalidPairs() {
     }
 }
 
-// Function to force synchronization between UI and stored preferences
-function syncWithStoredPreferences() {
-    console.log("Forcing synchronization with stored preferences");
-    
-    // Request current preferences from main process
-    ipcRenderer.send('get-preferences');
-    
-    // Set up a one-time listener for the response
-    ipcRenderer.once('preferences', (event, preferences) => {
-      console.log("Received preferences for sync:", preferences.cryptos);
-      
-      // Replace local tracking array with the official one from preferences
-      trackedCryptos = [...preferences.cryptos];
-      
-      // Refresh the UI
-      refreshCryptoList();
-      console.log("Synchronized tracking list:", trackedCryptos);
-    });
-  }
-
-  // Function to clean up any ghost entries in the UI
-function removeGhostEntries() {
-    console.log("Cleaning up ghost entries in tracking list");
-    
-    // First try our normal removal process
-    if (trackedCryptos.includes("BTC/BTC")) {
-      removeCrypto("BTC/BTC");
-    }
-    
-    // Then forcibly filter out any invalid pairs from the local array
-    const originalLength = trackedCryptos.length;
-    trackedCryptos = trackedCryptos.filter(crypto => {
-      if (crypto.includes('/')) {
-        const [base, quote] = crypto.split('/');
-        if (base === quote) {
-          console.log(`Filtering out self-pair: ${crypto}`);
-          return false;
-        }
-      }
-      return true;
-    });
-    
-    // If we removed anything, refresh the UI
-    if (trackedCryptos.length !== originalLength) {
-      console.log(`Removed ${originalLength - trackedCryptos.length} invalid pairs`);
-      refreshCryptoList();
-      
-      // Also trigger a sync with main process
-      syncWithStoredPreferences();
-    }
-  }
-
-  // Add this function to apply the black theme
-const applyDarkTheme = require('./src/component/applyDarkTheme');

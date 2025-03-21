@@ -1,127 +1,104 @@
+const axios = require('axios');
+const CRYPTOCOMPARE_API_KEY = 'your-api-key-here'; // Optional: Add your CryptoCompare API key if you have one
+
 async function displayEmbeddedChart(symbol, pair, chartContainer) {
+    if (!chartContainer) {
+        console.error('Chart container not found');
+        return;
+    }
+
     const chartTitle = chartContainer.querySelector('.chart-title');
     const chartCanvas = chartContainer.querySelector('.price-chart');
+
+    if (!chartTitle || !chartCanvas) {
+        console.error('Chart elements not found');
+        return;
+    }
     
     chartTitle.textContent = `Loading ${symbol}/${pair} data...`;
     
     try {
-        // Convert USD pair to USDT for API compatibility
-        const apiPair = pair === 'USD' ? 'USDT' : pair;
+        const chartData = await fetchCryptoCompareChartData(symbol);
         
-        // Fetch historical data
-        const response = await axios.get(
-            `https://min-api.cryptocompare.com/data/v2/histohour?fsym=${symbol}&tsym=${apiPair}&limit=24`
-        );
-        
-        if (response.data && response.data.Data && response.data.Data.Data) {
-            const chartData = response.data.Data.Data;
+        if (chartData && chartData.length > 0) {
+            const timestamps = chartData.map(item => item.timestamp);
+            const prices = chartData.map(item => item.price);
             
-            // Extract timestamps and prices
-            const timestamps = chartData.map(item => new Date(item.time * 1000));
-            const prices = chartData.map(item => item.close);
-            
-            // If we have data, initialize chart
-            if (prices.length > 0) {
-                createEmbeddedChart(chartCanvas, timestamps, prices, symbol, pair);
-                chartTitle.textContent = `${symbol}/${pair} - 24h`;
-            } else {
-                chartTitle.textContent = `No price data for ${symbol}/${pair}`;
-            }
+            createEmbeddedChart(chartCanvas, timestamps, prices, symbol, pair);
+            chartTitle.textContent = `${symbol}/${pair} - 24h`;
         } else {
-            throw new Error("Invalid chart data format");
+            throw new Error("No chart data available");
         }
     } catch (error) {
-        console.error("Error fetching chart data:", error);
+        console.error("Error displaying chart:", error);
         chartTitle.textContent = `Error loading ${symbol}/${pair}`;
     }
 }
 
 function createEmbeddedChart(canvas, timestamps, prices, symbol, pair) {
-    // Ensure Chart.js is loaded
-    if (!window.Chart) {
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-        script.onload = () => renderChart(canvas, timestamps, prices, symbol, pair);
-        document.head.appendChild(script);
-        return;
-    }
-    
-    renderChart(canvas, timestamps, prices, symbol, pair);
-}
-
-function renderChart(canvas, timestamps, prices, symbol, pair) {
     const ctx = canvas.getContext('2d');
     
-    // Destroy existing chart if there is one
     if (canvas.chart) {
         canvas.chart.destroy();
     }
-    
-    // Create gradient background
+
     const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, 'rgba(54, 162, 235, 0.4)');
-    gradient.addColorStop(1, 'rgba(54, 162, 235, 0.05)');
-    
-    // Find min and max price to ensure proper scaling
-    const minPrice = Math.min(...prices);
-    const maxPrice = Math.max(...prices);
-    const range = maxPrice - minPrice;
-    
-    // Add 10% padding to the range
-    const padding = range * 0.1;
-    
-    // Create chart
+    gradient.addColorStop(0, 'rgba(207, 239, 255, 0.2)');
+    gradient.addColorStop(1, 'rgba(207, 239, 255, 0.0)');
+
     canvas.chart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: timestamps,
             datasets: [{
-                label: `Price`,
                 data: prices,
-                borderColor: 'rgba(54, 162, 235, 1)',
+                borderColor: '#cfefff',
                 backgroundColor: gradient,
-                borderWidth: 2,
+                borderWidth: 1.5,
                 pointRadius: 0,
+                pointHitRadius: 10,
                 fill: true,
-                tension: 0.4
+                tension: 0,
+                cubicInterpolationMode: 'monotone'
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    display: false
-                },
+                legend: { display: false },
                 tooltip: {
-                    mode: 'index',
-                    intersect: false
+                    backgroundColor: 'rgba(26, 31, 49, 0.9)',
+                    titleColor: '#cfefff',
+                    bodyColor: '#cfefff',
+                    borderColor: 'rgba(207, 239, 255, 0.1)',
+                    borderWidth: 1,
+                    padding: 12,
+                    displayColors: false,
+                    callbacks: {
+                        label: (context) => `$${context.parsed.y.toFixed(2)}`
+                    }
                 }
             },
             scales: {
                 x: {
-                    display: false
-                },
-                y: {
-                    display: true,
-                    beginAtZero: false, // Important: Allow chart to show values below 0
-                    suggestedMin: minPrice - padding, // Add padding below the minimum
-                    suggestedMax: maxPrice + padding, // Add padding above the maximum
                     grid: {
-                        color: 'rgba(255, 255, 255, 0.05)'
+                        display: false
                     },
                     ticks: {
-                        color: 'rgba(255, 255, 255, 0.5)',
-                        font: {
-                            size: 10
-                        }
+                        color: 'rgba(207, 239, 255, 0.5)',
+                        maxRotation: 0,
+                        maxTicksLimit: 8
                     }
-                }
-            },
-            layout: {
-                padding: {
-                    top: 10,
-                    bottom: 10
+                },
+                y: {
+                    grid: {
+                        color: 'rgba(207, 239, 255, 0.1)'
+                    },
+                    ticks: {
+                        color: 'rgba(207, 239, 255, 0.5)',
+                        callback: (value) => `$${value.toFixed(2)}`
+                    }
                 }
             },
             interaction: {
@@ -129,6 +106,46 @@ function renderChart(canvas, timestamps, prices, symbol, pair) {
                 intersect: false
             }
         }
+    });
+}
+
+async function fetchCryptoCompareChartData(symbol, days = 1) {
+    try {
+        const limit = days * 24; // Get hourly data
+        const apiUrl = 'https://min-api.cryptocompare.com/data/v2/histohour';
+        const params = {
+            fsym: symbol.toUpperCase(),
+            tsym: 'USD',
+            limit: limit
+        };
+
+        // Add API key to headers if available
+        const headers = CRYPTOCOMPARE_API_KEY ? 
+            { 'authorization': `Apikey ${CRYPTOCOMPARE_API_KEY}` } : {};
+
+        const response = await axios.get(apiUrl, { 
+            params,
+            headers
+        });
+
+        if (response.data?.Data?.Data) {
+            return response.data.Data.Data.map(item => ({
+                timestamp: new Date(item.time * 1000),
+                price: item.close
+            }));
+        }
+        throw new Error('Invalid data format from CryptoCompare');
+    } catch (error) {
+        console.error('Error fetching CryptoCompare chart data:', error);
+        return null;
+    }
+}
+
+// Utility function to format dates for the chart
+function formatChartDate(date) {
+    return date.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
     });
 }
 
