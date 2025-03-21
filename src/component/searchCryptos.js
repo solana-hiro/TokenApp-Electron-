@@ -73,13 +73,19 @@ function searchCryptos(query) {
                 const style = document.createElement('style');
                 style.id = 'exchange-styles';
                 style.textContent = `
-                    .exchange-results-container {
-                        background-color: #292929;
-                        max-height: 400px;
-                        overflow-y: auto;
-                        border-radius: 8px;
-                        color: #fff;
-                    }
+                .exchange-results-container {
+                    background-color: #292929;
+                    height: calc(100vh - 200px); /* Full height minus 100px */
+                    overflow-y: auto;
+                    border-radius: 8px;
+                    color: #fff;
+                    position: fixed;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    z-index: 1000;
+                    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
+                }
                     .exchange-item {
                         display: flex;
                         align-items: center;
@@ -280,20 +286,43 @@ async function displayAllExchangeData(symbols, container) {
                             // Disable button and show loading state
                             btn.disabled = true;
                             btn.textContent = 'Adding...';
-
+            
+                            // Read current data.json
+                            const dataPath = path.join(__dirname, '..', '..', 'public', 'data.json');
+                            let currentData = [];
+                            try {
+                                currentData = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+                            } catch (error) {
+                                console.error('Error reading data.json:', error);
+                            }
+            
+                            // Create new token data
+                            const newToken = {
+                                "CoinName": coin?.CoinName || symbol,
+                                "Symbol": symbol,
+                                "ImageUrl": coin?.ImageUrl || "/placeholder.png",
+                                "exchange": exchange
+                            };
+            
+                            // Add to beginning of array if not already exists
+                            if (!currentData.some(item => item.Symbol === symbol)) {
+                                currentData.unshift(newToken);
+                                
+                                // Write back to data.json
+                                fs.writeFileSync(dataPath, JSON.stringify(currentData, null, 2));
+                            }
+                            refreshCryptoList();
                             if (exchange && exchange !== 'Global') {
                                 await addCryptoWithExchange(symbol, pair, exchange);
-                                
-                                // Store preferred exchange
                                 localStorage.setItem(`preferred_exchange_${symbol}/${pair}`, exchange);
                             } else {
                                 await addCryptoWithPair(symbol, pair);
                             }
-
+            
                             // Update button to show success
                             btn.textContent = 'Added ✓';
                             btn.style.backgroundColor = '#1f4442';
-
+            
                             // Create and add new crypto element to main screen
                             const cryptoContainer = document.querySelector('.crypto-list');
                             if (cryptoContainer) {
@@ -301,7 +330,7 @@ async function displayAllExchangeData(symbols, container) {
                                 newCryptoElement.className = 'crypto-item';
                                 newCryptoElement.setAttribute('data-symbol', symbol);
                                 newCryptoElement.setAttribute('data-pair', pair);
-
+            
                                 let imgUrl = 'https://via.placeholder.com/24';
                                 if (coin && coin.ImageUrl) {
                                     imgUrl = `https://www.cryptocompare.com${coin.ImageUrl}`;
@@ -318,25 +347,22 @@ async function displayAllExchangeData(symbols, container) {
                                     <div class="crypto-price">Loading...</div>
                                 `;
                                 cryptoContainer.insertBefore(newCryptoElement, cryptoContainer.firstChild);
-
-                                // Trigger price update if available
+            
                                 if (window.updatePrices) {
                                     window.updatePrices();
                                 }
                             }
-
-                            // Close modal after delay
+            
                             setTimeout(() => {
                                 toggleSearchModal(false);
                             }, 500);
-
+            
                         } catch (error) {
                             console.error('Error adding cryptocurrency:', error);
                             btn.textContent = 'Error';
                             btn.style.backgroundColor = '#3a1a1a';
                             btn.style.color = '#ff4444';
                             
-                            // Reset button after delay
                             setTimeout(() => {
                                 btn.disabled = false;
                                 btn.textContent = 'Add';
