@@ -61,77 +61,44 @@ body {
     opacity: var(--opacity);
 }
 
-
-/* Chart container styles */
 .chart-container {
-    position: fixed;
-    left: 0;
-    right: 0;
-    top: 0;
-    height: 200px;
-    background: var(--glass-bg);
-    backdrop-filter: blur(5px);
-    padding: 15px;
-    border-top: 1px solid var(--glass-border);
-    transform: translateY(100%);
-    transition: transform 0.3s ease;
-    z-index: 1000;
-    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.chart-container.visible {
-    transform: translateY(0);
-}
-
-.chart-container.minimized {
-    height: 40px;
-    padding: 5px 15px;
-}
-
-.chart-container.minimized .price-chart {
-    display: none;
+    width: 100%;
+    height: 400px;
+    position: relative;
 }
 
 .chart-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
-    height: 30px;
-}
-
-.chart-title {
-    flex: 1;
-    font-size: 14px;
-    font-weight: bold;
-    color: var(--text-color);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.chart-close,
-.chart-minimize {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 16px;
-    padding: 4px 8px;
-    margin-left: 8px;
-    color: var(--text-color);
-    opacity: 0.7;
-    transition: opacity 0.2s;
-}
-
-.chart-close:hover,
-.chart-minimize:hover {
-    opacity: 1;
+    justify-content: space-between;
+    padding: 10px;
 }
 
 .price-chart {
     width: 100%;
-    height: calc(100% - 40px);
-    transition: height 0.3s ease;
+    height: calc(100% - 50px);
+}
+
+.time-range-selector,
+.chart-type-selector {
+    display: flex;
+    gap: 5px;
+}
+
+.time-range-button,
+.chart-type-button {
+    padding: 2px 4px;
+    border: 1px solid #363c4e;
+    background: transparent;
+    color: #a6b0c3;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.time-range-button.active,
+.chart-type-button.active {
+    background: #363c4e;
+    color: white;
 }
 
 .widget-container {
@@ -342,8 +309,8 @@ width: 100%;
 }
 
 .coin-icon {
-width: 24px;
-height: 24px;
+width: 40px;
+height: 40px;
 border-radius: 50%;
 object-fit: cover;
 background: rgba(255, 255, 255, 0.1);
@@ -886,11 +853,13 @@ color: var(--text-color);
 
 
 [data-theme="light"] .chart-close {
-color: var(--text-color);
+    background: var(--close-search-modal-bg);
+    color: var(--text-color);
 }
 
 [data-theme="dark"] .chart-close {
-color: var(--text-color);
+    background: var(--close-search-modal-bg);
+    color: var(--text-color);
 }
 
 .price-chart {
@@ -1052,66 +1021,7 @@ height: 150px;
 margin-bottom: 10px;
 }
 
-.chart-header {
-display: flex;
-justify-content: space-between;
-align-items: center;
-padding: 6px 10px;
-}
-.chart-title {
-font-size: 12px;
-font-weight: bold;
-color: var(--text-color);
-}
 
-.chart-close {
-background: none;
-border: none;
-color: var(--text-color);
-cursor: pointer;
-font-size: 16px;
-padding: 0 4px;
-}
-
-.chart-body {
-height: 120px;
-padding: 0 10px;
-}
-
-/* Make crypto items clickable */
-.crypto-item {
-cursor: pointer;
-position: relative;
-}
-
-.crypto-item img {
-width: 40px;
-height: 40px;
-margin-right: 10px;
-border-radius: 50%;
-}
-
-.crypto-item:hover {
-background: var(--item-hover);
-}
-
-.crypto-item.active {
-background: var(--active-item-bg);
-border-color: var(--active-item-border);
-}
-
-.crypto-volume {
-color: var(--text-color);
-font-size: 0.8em;
-margin-top: 2px;
-}
-
-.crypto-info {
-display: flex;
-flex-direction: column;
-align-items: flex-start;
-flex: 1;
-}
 [data-theme="light"] .exchange-table {
 color: #333333;
 }
@@ -1315,13 +1225,6 @@ align-items: center;
 margin-bottom: 12px;
 }
 
-.coin-icon {
-width: 24px;
-height: 24px;
-margin-right: 10px;
-border-radius: 50%;
-}
-
 .coin-symbol {
 font-weight: bold;
 font-size: 16px;
@@ -1515,7 +1418,7 @@ padding: 0 10px 10px 10px; /* Added bottom padding */
 }
 
 canvas.price-chart {
-width: 100% !important;
+/* width: 100% !important; */
 height: 100% !important;
 }
 
@@ -1604,4 +1507,10 @@ font-size: 14px;
 
 .crypto-item-container:not(.dragging):hover::after {
     background: rgba(53, 179, 165, 0.5);
+}
+
+.flex {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }

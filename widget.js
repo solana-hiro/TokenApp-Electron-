@@ -397,8 +397,6 @@ function initializeChartArea() {
     chartArea.innerHTML = `
         <div class="chart-header">
             <div class="chart-title">Select a cryptocurrency</div>
-            <button class="chart-minimize">_</button>
-            <button class="chart-close">×</button>
         </div>
         <canvas class="price-chart"></canvas>
     `;
@@ -730,14 +728,18 @@ async function refreshCryptoList() {
             const volume = priceData ? formatVolume(priceData.volume) : '0';
 
             item.innerHTML = `
-                <img src="${imgUrl}" class="coin-icon">
-                <div class="crypto-info">
-                    <div class="crypto-exchange-badge" style="display: inline-block; font-size: 0.7rem; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 3px; margin-bottom: 3px; font-weight: bold;">${exchange.toUpperCase()}</div>
-                    <div class="crypto-name"><strong>${symbol}</strong>/${pair}</div>
-                    <div class="crypto-volume">${volume}</div>
+                <div class="flex">
+                    <img src="${imgUrl}" class="coin-icon">
+                    <div class="crypto-info">
+                        <div class="crypto-exchange-badge" style="display: inline-block; font-size: 0.7rem; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 3px; margin-bottom: 3px; font-weight: bold;">${exchange.toUpperCase()}</div>
+                        <div class="crypto-name"><strong>${symbol}</strong>/${pair}</div>
+                        <div class="crypto-volume">${volume}</div>
+                    </div>
                 </div>
-                <div class="crypto-price">${price}</div>
-                <div class="crypto-change ${priceData?.change > 0 ? 'up' : priceData?.change < 0 ? 'down' : ''}">${change}</div>
+                <div class="flex">
+                    <div class="crypto-price">${price}</div>
+                    <div class="crypto-change ${priceData?.change > 0 ? 'up' : priceData?.change < 0 ? 'down' : ''}">${change}</div>
+                </div>
                 <button class="btn remove" data-symbol="${symbol}" data-pair="${pair}" data-exchange="${exchange}" style="position: absolute; top: 1px; right: 1px;">×</button>
             `;
 
