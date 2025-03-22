@@ -33,6 +33,7 @@
     --pair-option-color: rgba(0, 0, 0, 0.6);
     --pair-select-option-bg: rgba(0, 0, 0, 0.1);
     --pair-select-option-border: 1px solid rgba(0, 0, 0, 0.2);
+    --chart-area-bg: rgba(255, 255, 255, 0.8);
 }
 
 [data-theme="dark"] {
@@ -49,6 +50,7 @@
     --pair-option-color: rgba(255, 255, 255, 0.6);
     --pair-select-option-bg: rgba(255, 255, 255, 0.1);
     --pair-select-option-border: 1px solid rgba(255, 255, 255, 0.2);
+    --chart-area-bg: rgba(56, 56, 56, 0.8);
 }
 
 
@@ -1010,7 +1012,6 @@ color: var(--text-color);
 height: 0;
 overflow: hidden;
 transition: height 0.3s ease;
-background: var(--chart-area-bg);
 border-radius: 0 0 8px 8px;
 margin-top: -5px;
 position: relative;
@@ -1415,11 +1416,14 @@ margin-bottom: 10px;
 .chart-body {
 height: 150px; /* Increased from 120px */
 padding: 0 10px 10px 10px; /* Added bottom padding */
+background: var(--chart-area-bg);
 }
 
 canvas.price-chart {
 /* width: 100% !important; */
 height: 100% !important;
+border-radius: 12px;
+background: var(--chart-area-bg);
 }
 
 /* Theme Switcher Styles */

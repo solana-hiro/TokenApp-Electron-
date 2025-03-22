@@ -14,7 +14,7 @@ const CHART_TYPES = {
 };
 
 const COLORS = {
-    UP: '#16c784',        // Green for price increase
+    UP: '#ea3943',        // Green for price increase
     DOWN: '#ea3943',      // Red for price decrease
     GRID: '#363c4e',      // Dark grid lines
     TEXT: '#a6b0c3',      // Light gray text
@@ -166,7 +166,7 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
                 borderWidth: 2,
                 pointRadius: 0,
                 pointHitRadius: 0,
-                fill: false,
+                fill: true,
                 tension: 0.1
             }]
         },
@@ -175,10 +175,10 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
             maintainAspectRatio: false,
             layout: {
                 padding: {
-                    top: 10,
-                    right: 16,
-                    bottom: 10,
-                    left: 10
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    left: 0
                 }
             },
             plugins: {
@@ -189,7 +189,7 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
                     bodyColor: COLORS.TEXT,
                     borderColor: COLORS.GRID,
                     borderWidth: 1,
-                    padding: 12,
+                    padding: 0,
                     displayColors: false,
                     callbacks: {
                         label: (context) => {
@@ -206,6 +206,7 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
                         drawBorder: false
                     },
                     ticks: {
+                        display: false,
                         color: COLORS.TEXT,
                         maxRotation: 0,
                         maxTicksLimit: 8,
@@ -215,7 +216,7 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
                     offset: false
                 },
                 y: {
-                    position: 'left',
+                    position: 'right',
                     grid: { 
                         color: COLORS.GRID,
                         drawBorder: false
@@ -224,9 +225,9 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
                         color: COLORS.TEXT,
                         callback: (value) => `$${value.toFixed(2)}`,
                         font: { size: 11 },
-                        padding: 8
+                        padding: 0
                     },
-                    display: true,
+                    display: false,
                     beginAtZero: false,
                     min: Math.min(...chartData.map(d => d.close)) * 0.9995,
                     max: Math.max(...chartData.map(d => d.close)) * 1.0005
@@ -278,7 +279,8 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
         }
         originalDestroy.call(this);
     };
-
+    console.log("Created chart:", newChart);
+    // newChart.chartArea.left = 0;
     return newChart;
 }
 
