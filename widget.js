@@ -599,7 +599,7 @@ function toggleSearchModal(forceShow) {
     }
     
     // Check current display state
-    const isCurrentlyShown = searchModal.style.display === 'block';
+    const isCurrentlyShown = searchModal.classList.contains('visible');
     
     // Determine if we should show or hide
     const shouldShow = forceShow === undefined ? !isCurrentlyShown : forceShow;
@@ -608,13 +608,16 @@ function toggleSearchModal(forceShow) {
         // SHOW the modal
         console.log("Showing search modal");
         searchModal.style.display = 'block';
+        // Use requestAnimationFrame to ensure display: block is applied before adding visible class
+        requestAnimationFrame(() => {
+            searchModal.classList.add('visible');
+        });
         
         // Update status
         const statusEl = document.getElementById('search-status');
         if (statusEl) {
             if (!cryptoList || Object.keys(cryptoList).length === 0) {
                 statusEl.textContent = "Loading coin data...";
-                // Load crypto list if not loaded
                 loadCryptoList().then(() => {
                     if (cryptoList && Object.keys(cryptoList).length > 0) {
                         statusEl.textContent = `${Object.keys(cryptoList).length} coins available`;
@@ -643,9 +646,16 @@ function toggleSearchModal(forceShow) {
     } else if (!shouldShow && isCurrentlyShown) {
         // HIDE the modal
         console.log("Hiding search modal");
-        searchModal.style.display = 'none';
+        searchModal.classList.remove('visible');
         
-        // Cancel any pending operations that might cause IPC issues
+        // Wait for animation to complete before hiding
+        setTimeout(() => {
+            if (!searchModal.classList.contains('visible')) {
+                searchModal.style.display = 'none';
+            }
+        }, 300); // Match this with your CSS transition duration
+        
+        // Clear results
         const searchResults = document.getElementById('search-results');
         if (searchResults) {
             searchResults.innerHTML = '';
@@ -653,6 +663,45 @@ function toggleSearchModal(forceShow) {
     }
 }
 
+function initSearchModalSwipe() {
+    const searchModal = document.getElementById('search-modal');
+    if (!searchModal) return;
+
+    let startX = 0;
+    let currentX = 0;
+
+    searchModal.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+    });
+
+    searchModal.addEventListener('touchmove', (e) => {
+        currentX = e.touches[0].clientX;
+        const diff = currentX - startX;
+        
+        // Only allow right swipe to close
+        if (diff > 0) {
+            searchModal.style.right = `-${diff}px`;
+            e.preventDefault();
+        }
+    });
+
+    searchModal.addEventListener('touchend', (e) => {
+        const diff = currentX - startX;
+        
+        // If swiped more than 100px to the right, close the modal
+        if (diff > 100) {
+            toggleSearchModal(false);
+        } else {
+            // Reset position if not swiped enough
+            searchModal.style.right = '0';
+        }
+        
+        startX = 0;
+        currentX = 0;
+    });
+}
+
+initSearchModalSwipe();
 // Listen for preferences from main process
 ipcRenderer.on('preferences', (event, preferences) => {
     trackedCryptos = preferences.cryptos;

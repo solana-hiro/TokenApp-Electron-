@@ -5,8 +5,7 @@ const TIMEFRAMES = {
     '1H': { interval: 'minute', limit: 60, days: 1/24 },
     '4H': { interval: 'minute', limit: 240, days: 1/6 },
     '24H': { interval: 'minute', limit: 24 * 60, days: 1 },
-    '7D': { interval: 'hour', limit: 7 * 24, days: 7 },
-    '30D': { interval: 'hour', limit: 30 * 24, days: 30 }
+    '1W': { interval: 'hour', limit: 7 * 24, days: 7 },
 };
 
 const CHART_TYPES = {
