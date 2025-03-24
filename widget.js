@@ -795,13 +795,11 @@ async function refreshCryptoList() {
             // Add click event for chart display
             item.addEventListener('click', (e) => {
                 if (e.target.classList.contains('remove')) return;
-                
                 const chartArea = document.querySelector('.chart-area');
                 if (!chartArea) return;
-            
+
                 // Show the chart area if it's hidden
                 chartArea.classList.add('visible');
-                
                 const allItems = document.querySelectorAll('.crypto-item');
                 allItems.forEach(i => {
                     if (i !== item) i.classList.remove('active');
@@ -821,6 +819,13 @@ async function refreshCryptoList() {
                     const updatedData = currentData.filter(item => 
                         !(item.Symbol === symbol && item.exchange === exchange)
                     );
+                    const chartArea = document.querySelector('.chart-area');
+                    const chartTitle = document.querySelector('.chart-title');
+                    
+                    if (chartTitle && chartTitle.textContent.includes(`${symbol}/${pair}`)) {
+                        initializeChartArea();
+                    }
+                    chartArea.classList.add('visible');
                     fs.writeFileSync(dataPath, JSON.stringify(updatedData, null, 2));
                     container.remove();
                 } catch (error) {
@@ -843,7 +848,6 @@ async function refreshCryptoList() {
             cryptoListEl.appendChild(container);
         }
     });
-
 
     setupWebSocketConnections(listCryptos);
 }
@@ -1051,4 +1055,3 @@ function cleanupInvalidPairs() {
         refreshCryptoList();
     }
 }
-
