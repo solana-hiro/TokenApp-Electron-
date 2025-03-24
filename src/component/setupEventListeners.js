@@ -195,8 +195,8 @@ function setupResize() {
         }
         
         // Enforce min/max sizes
-        newWidth = Math.max(200, Math.min(600, newWidth));
-        newHeight = Math.max(300, Math.min(800, newHeight));
+        newWidth = Math.max(250, Math.min(680, newWidth));    // Updated max width
+        newHeight = Math.max(400, Math.min(1150, newHeight)); // Updated max height
         
         // Update window size
         ipcRenderer.send('resize-window', { width: newWidth, height: newHeight });

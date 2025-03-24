@@ -5,7 +5,7 @@ const TIMEFRAMES = {
     '1H': { interval: 'minute', limit: 60, days: 1/24 },
     '4H': { interval: 'minute', limit: 240, days: 1/6 },
     '24H': { interval: 'minute', limit: 24 * 60, days: 1 },
-    '1W': { interval: 'hour', limit: 7 * 24, days: 7 },
+    '1W': { interval: 'hour', limit: 7 * 24, days: 7 }
 };
 
 const CHART_TYPES = {
@@ -13,14 +13,14 @@ const CHART_TYPES = {
 };
 
 const COLORS = {
-    UP: '#ea3943',        // Green for price increase
-    DOWN: '#ea3943',      // Red for price decrease
+    UP: '#ea3943',        // Red for price decrease #ea3943
+    DOWN: '#ea3943',      // Green for price increase
     GRID: '#363c4e',      // Dark grid lines
     TEXT: '#a6b0c3',      // Light gray text
     TOOLTIP_BG: '#1c1f2d' // Dark tooltip background
 };
 
-async function displayEmbeddedChart(symbol, pair, chartContainer, chartType = CHART_TYPES.LINE, timeframe = '7D') {
+async function displayEmbeddedChart(symbol, pair, chartContainer, chartType = CHART_TYPES.LINE, timeframe = '1H') {
     if (!chartContainer) return;
 
     const chartTitle = chartContainer.querySelector('.chart-title');
@@ -45,16 +45,21 @@ async function displayEmbeddedChart(symbol, pair, chartContainer, chartType = CH
         });
 
         const minimizeBtn = chartHeader.querySelector('.chart-minimize');
-        chartHeader.insertBefore(timeSelector, minimizeBtn);
+        if (minimizeBtn) {
+            chartHeader.insertBefore(timeSelector, minimizeBtn);
+        } else {
+            chartHeader.appendChild(timeSelector);
+        }
     }
 
     chartTitle.textContent = `Loading ${symbol}/${pair} data...`;
 
     try {
-        const selectedTimeframe = TIMEFRAMES[timeframe];
+        const selectedTimeframe = TIMEFRAMES[timeframe] || TIMEFRAMES['1H'];
         const chartData = await fetchCryptoCompareChartData(symbol, selectedTimeframe);
+        
         if (chartData && chartData.length > 0) {
-            createEmbeddedChart(chartCanvas, chartData, symbol, pair, chartType);
+            createEmbeddedChart(chartCanvas, chartData, symbol, pair);
             chartTitle.textContent = `${symbol}/${pair}`;
         } else {
             throw new Error("No chart data available");
@@ -66,6 +71,11 @@ async function displayEmbeddedChart(symbol, pair, chartContainer, chartType = CH
 }
 
 async function fetchCryptoCompareChartData(symbol, timeframe) {
+    if (!symbol || !timeframe) {
+        console.error('Invalid parameters:', { symbol, timeframe });
+        return null;
+    }
+
     try {
         let apiUrl;
         const params = {
@@ -100,6 +110,7 @@ async function fetchCryptoCompareChartData(symbol, timeframe) {
         return null;
     }
 }
+
 function createEmbeddedChart(canvas, chartData, symbol, pair) {
     if (!canvas || !chartData || chartData.length === 0) return;
     
@@ -117,6 +128,16 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
     canvas.style.height = '100%';
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
+
+    const prices = chartData.map(d => d.close);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const priceDiff = maxPrice - minPrice;
+    
+    // Add 2% padding to top and bottom
+    const paddingPercentage = 0.02;
+    const yMin = minPrice - (priceDiff * paddingPercentage);
+    const yMax = maxPrice + (priceDiff * paddingPercentage);
 
     // Calculate segments for color changes
     const segments = chartData.map((point, index) => {
@@ -138,34 +159,22 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
                         return COLORS.UP;
                     }
                     const index = context.dataIndex;
-                    // Handle first point
-                    if (index === 0) {
-                        return segments.length > 1 ? 
-                            (segments[1].close >= segments[0].close ? COLORS.UP : COLORS.DOWN) : 
-                            COLORS.UP;
-                    }
-                    // Handle other points
-                    return segments[index] && segments[index].isUp ? COLORS.UP : COLORS.DOWN;
+                    return index === 0 ? 
+                        (segments.length > 1 ? (segments[1].close >= segments[0].close ? COLORS.UP : COLORS.DOWN) : COLORS.UP) :
+                        (segments[index].isUp ? COLORS.UP : COLORS.DOWN);
                 },
                 segment: {
                     borderColor: ctx => {
-                        if (!ctx || typeof ctx.p0DataIndex === 'undefined') {
-                            return COLORS.UP;
-                        }
+                        if (!ctx || typeof ctx.p0DataIndex === 'undefined') return COLORS.UP;
                         const index = ctx.p0DataIndex;
-                        // Handle last segment
-                        if (index >= segments.length - 1) {
-                            return COLORS.UP;
-                        }
-                        // Handle other segments
-                        return segments[index + 1].close >= segments[index].close ? 
-                            COLORS.UP : COLORS.DOWN;
+                        return index >= segments.length - 1 ? COLORS.UP :
+                            segments[index + 1].close >= segments[index].close ? COLORS.UP : COLORS.DOWN;
                     }
                 },
                 borderWidth: 2,
                 pointRadius: 0,
                 pointHitRadius: 0,
-                fill: true,
+                fill: false,
                 tension: 0.1
             }]
         },
@@ -174,10 +183,10 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
             maintainAspectRatio: false,
             layout: {
                 padding: {
-                    top: 0,
-                    right: 0,
-                    bottom: 0,
-                    left: 0
+                    top: 10,
+                    right: 10,
+                    bottom: 10,
+                    left: 10
                 }
             },
             plugins: {
@@ -188,7 +197,7 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
                     bodyColor: COLORS.TEXT,
                     borderColor: COLORS.GRID,
                     borderWidth: 1,
-                    padding: 0,
+                    padding: 8,
                     displayColors: false,
                     callbacks: {
                         label: (context) => {
@@ -205,14 +214,18 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
                         drawBorder: false
                     },
                     ticks: {
-                        display: false,
+                        display: true,
                         color: COLORS.TEXT,
                         maxRotation: 0,
-                        maxTicksLimit: 8,
-                        font: { size: 11 }
+                        maxTicksLimit: 6,
+                        font: { size: 11 },
+                        callback: function(value, index) {
+                            const date = new Date(this.getLabelForValue(value));
+                            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        }
                     },
                     display: true,
-                    offset: false
+                    offset: true
                 },
                 y: {
                     position: 'right',
@@ -224,12 +237,14 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
                         color: COLORS.TEXT,
                         callback: (value) => `$${value.toFixed(2)}`,
                         font: { size: 11 },
-                        padding: 0
+                        padding: 8,
+                        maxTicksLimit: 6
                     },
-                    display: false,
+                    display: true,
                     beginAtZero: false,
-                    min: Math.min(...chartData.map(d => d.close)) * 0.9995,
-                    max: Math.max(...chartData.map(d => d.close)) * 1.0005
+                    min: yMin,
+                    max: yMax,
+                    grace: '5%'
                 }
             },
             interaction: {
@@ -278,8 +293,7 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
         }
         originalDestroy.call(this);
     };
-    console.log("Created chart:", newChart);
-    // newChart.chartArea.left = 0;
+
     return newChart;
 }
 
