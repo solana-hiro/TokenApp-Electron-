@@ -1,5 +1,11 @@
 [
   {
+    "CoinName": "QUBIC",
+    "Symbol": "QUBIC",
+    "ImageUrl": "/media/44613487/qubic.png",
+    "exchange": "gate"
+  },
+  {
     "CoinName": "ETH",
     "Symbol": "ETH",
     "ImageUrl": "/media/37746238/eth.png",

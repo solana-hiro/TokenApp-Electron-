@@ -210,18 +210,23 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
             scales: {
                 x: {
                     grid: { 
-                        display: false,
-                        drawBorder: false
+                        display: true,
+                        drawBorder: false,
+                        color: COLORS.GRID
                     },
                     ticks: {
                         display: true,
                         color: COLORS.TEXT,
                         maxRotation: 0,
-                        maxTicksLimit: 6,
+                        maxTicksLimit: 20,  // Increased from default
+                        autoSkip: false,    // Prevents automatic tick skipping
                         font: { size: 11 },
                         callback: function(value, index) {
                             const date = new Date(this.getLabelForValue(value));
-                            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            return date.toLocaleTimeString([], { 
+                                hour: '2-digit', 
+                                minute: '2-digit'
+                            });
                         }
                     },
                     display: true,
@@ -231,14 +236,17 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
                     position: 'right',
                     grid: { 
                         color: COLORS.GRID,
-                        drawBorder: false
+                        drawBorder: false,
+                        display: true
                     },
                     ticks: {
                         color: COLORS.TEXT,
                         callback: (value) => `$${value.toFixed(2)}`,
                         font: { size: 11 },
                         padding: 8,
-                        maxTicksLimit: 6
+                        maxTicksLimit: 15,  // Increased from default
+                        autoSkip: false,    // Prevents automatic tick skipping
+                        sampleSize: 100     // Increased sample size
                     },
                     display: true,
                     beginAtZero: false,

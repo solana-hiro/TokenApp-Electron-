@@ -805,7 +805,8 @@ async function refreshCryptoList() {
                     if (i !== item) i.classList.remove('active');
                 });
                 item.classList.toggle('active');
-                
+                console.log(`Displaying chart for ${symbol}/${pair}`);
+                initializeChartArea();
                 displayEmbeddedChart(symbol, pair, chartArea);
                 initDragAndDrop();
             });
@@ -821,7 +822,7 @@ async function refreshCryptoList() {
                     );
                     const chartArea = document.querySelector('.chart-area');
                     const chartTitle = document.querySelector('.chart-title');
-                    
+
                     if (chartTitle && chartTitle.textContent.includes(`${symbol}/${pair}`)) {
                         initializeChartArea();
                     }
