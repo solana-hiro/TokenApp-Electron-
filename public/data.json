@@ -3,6 +3,13 @@
     "CoinName": "QUBIC",
     "Symbol": "QUBIC",
     "ImageUrl": "/media/44613487/qubic.png",
+    "exchange": "mexc",
+    "pair": "BTC"
+  },
+  {
+    "CoinName": "QUBIC",
+    "Symbol": "QUBIC",
+    "ImageUrl": "/media/44613487/qubic.png",
     "exchange": "gate"
   },
   {

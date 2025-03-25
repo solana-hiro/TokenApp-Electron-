@@ -255,8 +255,8 @@ async function displayAllExchangeData(symbols, container) {
                     imgUrl = `https://www.cryptocompare.com${coin.ImageUrl}`;
                 }
                 
-                const volume = result.data.volume ? formatVolume(result.data.volume) : '0';
-                const price = result.data.price.toFixed(result.data.price < 1 ? 6 : 2);
+                const volume = result.data.volume ? `${formatVolume(result.data.volume)}` : '$0';
+                const price = `${result.data.price.toFixed(2)}`;
                 
                 // Check if this symbol is already added
                 const isAdded = currentData.some(item => 
@@ -283,7 +283,7 @@ async function displayAllExchangeData(symbols, container) {
                             </div>
                         </div>
                         <div class="token-price-container">
-                            <div class="token-price">≈$${price}</div>
+                            <div class="token-price">≈${price}</div>
                             <div class="price-change">${result.data.change ? result.data.change.toFixed(2) + '%' : ''}</div>
                         </div>
                         <button class="add-btn" 

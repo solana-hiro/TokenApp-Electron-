@@ -3,8 +3,6 @@ async function tryCryptoCompare(symbol, pair) {
     const cacheKey = `${symbol}/${pair}`;
     const now = Date.now();
     
-    console.log(`Trying CryptoCompare API as fallback for ${cacheKey}`);
-    
     try {
         // Try the main price endpoint first (faster)
         const priceResponse = await axios.get(

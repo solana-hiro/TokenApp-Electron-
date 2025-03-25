@@ -2,7 +2,6 @@ const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen } = require
 const path = require('path');
 const fs = require('fs');
 
-// Add tray as a global reference to prevent garbage collection
 let tray = null;
 let isQuitting = false;
 let mainWindow;
@@ -27,14 +26,14 @@ ipcMain.on('price-update', (event, priceData) => {
 
 function updateTrayTooltip() {
   if (!tray) return;
-  
+
   let tooltipText = 'Coin Tracker\n';
-  
+
   for (const [symbol, data] of Object.entries(lastPriceInfo)) {
       const price = typeof data.price === 'number' ? data.price.toFixed(2) : data.price;
       const change = typeof data.change === 'number' ? data.change.toFixed(2) : data.change;
       const changeSymbol = change >= 0 ? '↑' : '↓';
-      tooltipText += `\n${symbol}: $${price} ${changeSymbol}${Math.abs(change)}%`;
+      tooltipText += `\n${symbol}: ${price} ${changeSymbol}${Math.abs(change)}%`;
   }
   
   tray.setToolTip(tooltipText);
@@ -81,6 +80,7 @@ function createWindow() {
 
   mainWindow = new BrowserWindow({
     width: preferences.size.width,
+    title: 'Trackr Pro',
     skipTaskbar: false,
     height: preferences.size.height,
     x: preferences.position.x,

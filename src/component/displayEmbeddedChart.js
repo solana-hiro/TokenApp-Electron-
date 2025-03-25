@@ -218,7 +218,7 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
                     callbacks: {
                         label: (context) => {
                             const value = context.parsed.y;
-                            return `$${value.toFixed(2)}`;
+                    return `$${value.toFixed(2)}`; // Single $ symbol
                         }
                     }
                 },

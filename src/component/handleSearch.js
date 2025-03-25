@@ -174,26 +174,18 @@ async function fetchExchangeDataForPair(symbol, pair) {
         );
         
         if (response.data && response.data.tickers) {
-            // Filter and map the tickers
-            const exchangeData = response.data.tickers
-                .filter(ticker => {
-                    // Match the target pair
-                    const basePart = ticker.target.toLowerCase();
-                    return basePart === geckoPair || 
-                           (geckoPair === 'usd' && (basePart === 'usdt' || basePart === 'usdc')) ||
-                           (geckoPair === 'btc' && basePart === 'xbt');
-                })
-                .map(ticker => ({
+            for (const ticker of response.data.tickers) {
+                const performance = await fetch24hPerformance(symbol, ticker.market.name);
+                
+                allResults.push({
                     exchange: ticker.market.name,
-                    pair: `${symbol}/${ticker.target}`,
+                    pair: ticker.target,
                     volume: ticker.converted_volume.usd || 0,
                     price: ticker.last,
-                    volumeFormatted: formatVolume(ticker.converted_volume.usd),
-                    pairKey: `${symbol}/${ticker.target}`
-                }))
-                .sort((a, b) => b.volume - a.volume); // Sort by volume descending
-            
-            return exchangeData;
+                    base: symbol,
+                    performance: performance // Add performance data
+                });
+            }
         }
     } catch (geckoError) {
         console.error('CoinGecko API error:', geckoError);
@@ -237,6 +229,40 @@ async function fetchExchangeDataForPair(symbol, pair) {
     }
 }
 
+async function fetch24hPerformance(symbol, exchange) {
+    try {
+        // Get 24h ago timestamp
+        const now = Math.floor(Date.now() / 1000);
+        const yesterday = now - (24 * 60 * 60);
+        
+        const response = await axios.get(`https://min-api.cryptocompare.com/data/v2/histohour`, {
+            params: {
+                fsym: symbol,
+                tsym: 'USDT',
+                limit: 24,
+                toTs: now
+            }
+        });
+
+        if (response.data?.Data?.Data) {
+            const historicalData = response.data.Data.Data;
+            if (historicalData.length >= 24) {
+                const oldPrice = historicalData[0].close;
+                const currentPrice = historicalData[historicalData.length - 1].close;
+                
+                // Calculate percentage change
+                const percentChange = ((currentPrice - oldPrice) / oldPrice) * 100;
+                
+                // Limit to reasonable range (-100% to +1000%)
+                return Math.max(Math.min(percentChange, 1000), -100).toFixed(2);
+            }
+        }
+        return null;
+    } catch (error) {
+        console.error('Error fetching 24h performance:', error);
+        return null;
+    }
+}
 // Display exchange comparison results
 function displayExchangeComparison(exchanges, symbol, pair) {
     const tbody = document.getElementById('exchange-comparison-body');

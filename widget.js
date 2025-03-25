@@ -496,11 +496,11 @@ function formatVolume(volume) {
     const numVolume = parseFloat(volume);
     
     if (numVolume >= 1000000000) {
-        return `${(numVolume / 1000000000).toFixed(2)}B`;
+        return `$${(numVolume / 1000000000).toFixed(2)}B`;
     } else if (numVolume >= 1000000) {
-        return `${(numVolume / 1000000).toFixed(2)}M`;
+        return `$${(numVolume / 1000000).toFixed(2)}M`;
     } else if (numVolume >= 1000) {
-        return `${(numVolume / 1000).toFixed(2)}K`;
+        return `$${(numVolume / 1000).toFixed(2)}K`;
     } else {
         return numVolume.toFixed(2);
     }
@@ -909,7 +909,7 @@ function updateCryptoPrice(cryptoKey, price, changePercent, volume, source) {
     
     const priceElement = cryptoElement.querySelector('.crypto-price');
     if (priceElement) {
-        priceElement.textContent = `$` + formatPrice(price);
+        priceElement.textContent = formatPrice(price);
     }
     
     const changeElement = cryptoElement.querySelector('.crypto-change');
