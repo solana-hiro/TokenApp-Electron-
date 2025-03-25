@@ -1,27 +1,16 @@
 [
   {
-    "CoinName": "QUBIC",
-    "Symbol": "QUBIC",
-    "ImageUrl": "/media/44613487/qubic.png",
-    "exchange": "mexc",
-    "pair": "BTC"
-  },
-  {
-    "CoinName": "QUBIC",
-    "Symbol": "QUBIC",
-    "ImageUrl": "/media/44613487/qubic.png",
-    "exchange": "gate"
+    "CoinName": "ETH",
+    "Symbol": "ETH",
+    "Pair": "USDT",
+    "ImageUrl": "/media/37746238/eth.png",
+    "exchange": "kucoin"
   },
   {
     "CoinName": "ETH",
     "Symbol": "ETH",
+    "Pair": "BTC",
     "ImageUrl": "/media/37746238/eth.png",
-    "exchange": "bybit"
-  },
-  {
-    "CoinName": "BTC",
-    "Symbol": "BTC",
-    "ImageUrl": "/media/37746251/btc.png",
-    "exchange": "binance"
+    "exchange": "kraken"
   }
 ]

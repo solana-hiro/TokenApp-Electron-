@@ -255,7 +255,7 @@ async function displayAllExchangeData(symbols, container) {
                     imgUrl = `https://www.cryptocompare.com${coin.ImageUrl}`;
                 }
                 
-                const volume = result.data.volume ? `${formatVolume(result.data.volume)}` : '$0';
+                const volume = result.data.volume ? formatVolume(result.data.volume, result.pair) : (result.pair === 'BTC' ? '₿0' : '$0');
                 const price = `${result.data.price.toFixed(2)}`;
                 
                 // Check if this symbol is already added
@@ -277,7 +277,7 @@ async function displayAllExchangeData(symbols, container) {
                                 <div class="exchange-name">${result.exchange.toUpperCase()}</div>
                                 <div>
                                     <span class="token-symbol">${symbol}</span>
-                                    <span class="token-pair">/USDT</span>
+                                    <span class="token-pair">/${result.pair}</span>
                                 </div>
                                 <div class="token-volume">${volume}</div>
                             </div>
@@ -288,14 +288,13 @@ async function displayAllExchangeData(symbols, container) {
                         </div>
                         <button class="add-btn" 
                             data-symbol="${symbol}" 
-                            data-pair="USDT" 
+                            data-pair="${result.pair}" 
                             data-exchange="${result.exchange}"
                             ${isAdded ? 'disabled' : ''}
                             style="${buttonStyle}">
                             ${buttonText}
                         </button>
-                    </div>
-                `;
+                    </div>`;
                 exchangeList.insertAdjacentHTML('beforeend', exchangeItemHTML);
             });
 
@@ -326,6 +325,7 @@ async function displayAllExchangeData(symbols, container) {
                             const newToken = {
                                 "CoinName": coin?.CoinName || symbol,
                                 "Symbol": symbol,
+                                "Pair":pair,
                                 "ImageUrl": coin?.ImageUrl || "/placeholder.png",
                                 "exchange": exchange
                             };
@@ -384,22 +384,37 @@ async function fetchExchangePricesForSymbol(symbol) {
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 3000);
-            
-            const result = await fetchPriceFromExchange(exchange, symbol, 'USDT', controller.signal);
-            clearTimeout(timeoutId);
-            
-            if (result && result.price) {
-                results.push({
-                    exchange,
-                    pair: 'USDT',
-                    data: result,
-                    success: true
-                });
-            } else {
-                results.push({
-                    exchange,
-                    success: false
-                });
+            const pairs = ['USDT', 'BTC'];
+
+            for (const pair of pairs) {
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 3000);
+                    
+                    const result = await fetchPriceFromExchange(exchange, symbol, pair, controller.signal);
+                    clearTimeout(timeoutId);
+                    
+                    if (result && result.price) {
+                        results.push({
+                            exchange,
+                            pair,
+                            data: result,
+                            success: true
+                        });
+                    } else {
+                        results.push({
+                            exchange,
+                            pair,
+                            success: false
+                        });
+                    }
+                } catch (error) {
+                    results.push({
+                        exchange,
+                        pair,
+                        success: false
+                    });
+                }
             }
         } catch (error) {
             results.push({

@@ -173,11 +173,11 @@ async function fetchPriceFromExchange(exchange, base, quote, signal) {
                             let change = 0;
                             let volume = 0;
                             
-                            if (statsResp.data && statsResp.data.data) {
-                                const open = parseFloat(statsResp.data.data.open);
+                            if (statsResp.data && statsResp.data.stats) {  // Changed from data.data to data.stats
+                                const open = parseFloat(statsResp.data.stats.open);  // Changed from data.data.open
                                 const last = parseFloat(resp.data.data.amount);
                                 change = ((last - open) / open) * 100;
-                                volume = parseFloat(statsResp.data.data.volume) || 0;
+                                volume = parseFloat(statsResp.data.stats.volume) || 0;  // Changed from data.data.volume
                             }
                             
                             result = {
@@ -201,7 +201,6 @@ async function fetchPriceFromExchange(exchange, base, quote, signal) {
                     console.log(`Coinbase does not support ${base}/${quote}`);
                 }
                 break;
-                
             case 'kraken':
                 try {
                     const resp = await axios.get(`https://api.kraken.com/0/public/Ticker?pair=${base}${quote}`, { signal });
@@ -488,13 +487,25 @@ function addVolumeTracking() {
     };
 }
 
-function formatVolume(volume) {
+function formatVolume(volume, quote = 'USDT') {
     if (volume === undefined || volume === null || isNaN(volume)) {
         return 'N/A';
     }
     
     const numVolume = parseFloat(volume);
     
+    // Handle BTC pairs differently
+    if (quote === 'BTC') {
+        if (numVolume >= 1000) {
+            return `₿${(numVolume / 1000).toFixed(2)}K`;
+        } else if (numVolume >= 1) {
+            return `₿${numVolume.toFixed(2)}`;
+        } else {
+            return `₿${numVolume.toFixed(8)}`;
+        }
+    }
+    
+    // Default USDT/USD formatting
     if (numVolume >= 1000000000) {
         return `$${(numVolume / 1000000000).toFixed(2)}B`;
     } else if (numVolume >= 1000000) {
@@ -502,7 +513,7 @@ function formatVolume(volume) {
     } else if (numVolume >= 1000) {
         return `$${(numVolume / 1000).toFixed(2)}K`;
     } else {
-        return numVolume.toFixed(2);
+        return `$${numVolume.toFixed(2)}`;
     }
 }
 
@@ -748,7 +759,7 @@ async function refreshCryptoList() {
     
     const fetchPromises = listCryptos.map(async (crypto, index) => {
         const symbol = crypto.Symbol;
-        const pair = 'USDT';
+        const pair = crypto.Pair;
         const exchange = crypto.exchange;
         
         try {
