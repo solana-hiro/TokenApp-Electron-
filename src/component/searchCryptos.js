@@ -284,7 +284,7 @@ async function displayAllExchangeData(symbols, container) {
                         </div>
                         <div class="token-price-container">
                             <div class="token-price">≈${price}</div>
-                            <div class="price-change">${result.data.change ? result.data.change.toFixed(2) + '%' : ''}</div>
+                            <div class="price-change ${result.data.change > 0 ? 'up' : result.data.change < 0 ? 'down' : ''}">${formatPriceChange(result.data.change)}</div>
                         </div>
                         <button class="add-btn" 
                             data-symbol="${symbol}" 
@@ -375,6 +375,33 @@ async function displayAllExchangeData(symbols, container) {
     
     const statusEl = document.getElementById('search-status');
     if (statusEl) statusEl.textContent = `Displaying exchange data for ${symbols.length} tokens`;
+}
+
+function formatPriceChange(change) {
+    if (!change && change !== 0) return '';
+    
+    const numChange = parseFloat(change);
+    if (isNaN(numChange)) return '';
+    
+    // Handle extreme values
+    if (numChange > 999999) return '>999999%';
+    if (numChange < -999999) return '<-999999%';
+    
+    // Add plus sign for positive values
+    const sign = numChange > 0 ? '+' : '';
+    
+    // Determine decimal places based on magnitude
+    let decimals;
+    const absChange = Math.abs(numChange);
+    if (absChange >= 100) {
+        decimals = 1;  // 123.4%
+    } else if (absChange >= 10) {
+        decimals = 2;  // 12.34%
+    } else {
+        decimals = 2;  // 1.23%
+    }
+    
+    return `${sign}${numChange.toFixed(decimals)}%`;
 }
 
 async function fetchExchangePricesForSymbol(symbol) {

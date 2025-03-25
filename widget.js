@@ -552,16 +552,32 @@ function formatChange(changePercent) {
         return '0.00%';
     }
     
-    // Determine number of decimal places
-    let decimalPlaces = 2;
-    
     // Convert to number if it's a string
     const numChange = parseFloat(changePercent);
+    
+    // Add validation for extreme values
+    if (numChange > 999999) {
+        return '>999999%';
+    } else if (numChange < -999999) {
+        return '<-999999%';
+    }
+    
+    // Determine number of decimal places based on the magnitude
+    let decimalPlaces;
+    const absChange = Math.abs(numChange);
+    
+    if (absChange >= 100) {
+        decimalPlaces = 1; // Show only 1 decimal for large changes
+    } else if (absChange >= 10) {
+        decimalPlaces = 2; // Show 2 decimals for medium changes
+    } else {
+        decimalPlaces = 2; // Show 2 decimals for small changes
+    }
     
     // Add plus sign for positive values, keep minus for negative
     const sign = numChange > 0 ? '+' : '';
     
-    // Format with fixed decimal places
+    // Format with appropriate decimal places
     return `${sign}${numChange.toFixed(decimalPlaces)}%`;
 }
 
