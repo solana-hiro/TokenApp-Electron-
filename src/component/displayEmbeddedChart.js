@@ -116,12 +116,10 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
     
     const ctx = canvas.getContext('2d');
     
-    // Properly destroy any existing chart
     if (window.Chart.getChart(canvas)) {
         window.Chart.getChart(canvas).destroy();
     }
 
-    // Clear the canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     canvas.style.width = '100%';
@@ -134,12 +132,11 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
     const maxPrice = Math.max(...prices);
     const priceDiff = maxPrice - minPrice;
     
-    // Add 2% padding to top and bottom
-    const paddingPercentage = 0.02;
+    // Increase padding for better visibility
+    const paddingPercentage = 0.05; // Increased from 0.02 to 0.05
     const yMin = minPrice - (priceDiff * paddingPercentage);
     const yMax = maxPrice + (priceDiff * paddingPercentage);
 
-    // Calculate segments for color changes
     const segments = chartData.map((point, index) => {
         if (index === 0) return { ...point, isUp: true };
         return {
@@ -147,6 +144,9 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
             isUp: point.close >= chartData[index - 1].close
         };
     });
+
+    const minIndex = prices.indexOf(minPrice);
+    const maxIndex = prices.indexOf(maxPrice);
 
     const chartConfig = {
         type: 'line',
@@ -172,8 +172,24 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
                     }
                 },
                 borderWidth: 2,
-                pointRadius: 0,
-                pointHitRadius: 0,
+                pointRadius: (ctx) => {
+                    if (!ctx || typeof ctx.dataIndex === 'undefined') return 0;
+                    return ctx.dataIndex === minIndex || ctx.dataIndex === maxIndex ? 6 : 0; // Increased from 4 to 6
+                },
+                pointBackgroundColor: (ctx) => {
+                    if (!ctx || typeof ctx.dataIndex === 'undefined') return 'transparent';
+                    if (ctx.dataIndex === minIndex) return COLORS.DOWN;
+                    if (ctx.dataIndex === maxIndex) return COLORS.UP;
+                    return 'transparent';
+                },
+                pointBorderColor: (ctx) => {
+                    if (!ctx || typeof ctx.dataIndex === 'undefined') return 'transparent';
+                    if (ctx.dataIndex === minIndex) return COLORS.DOWN;
+                    if (ctx.dataIndex === maxIndex) return COLORS.UP;
+                    return 'transparent';
+                },
+                pointBorderWidth: 3, // Increased from 2 to 3
+                pointHitRadius: 8, // Increased from 6 to 8
                 fill: false,
                 tension: 0.1
             }]
@@ -183,10 +199,10 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
             maintainAspectRatio: false,
             layout: {
                 padding: {
-                    top: 10,
-                    right: 10,
-                    bottom: 10,
-                    left: 10
+                    top: 30,    // Increased padding
+                    right: 30,
+                    bottom: 30,
+                    left: 30
                 }
             },
             plugins: {
@@ -205,6 +221,74 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
                             return `$${value.toFixed(2)}`;
                         }
                     }
+                },
+                annotation: {
+                    annotations: {
+                        minPoint: {
+                            type: 'point',
+                            xValue: segments[minIndex].timestamp,
+                            yValue: minPrice,
+                            backgroundColor: COLORS.DOWN,
+                            radius: 6
+                        },
+                        maxPoint: {
+                            type: 'point',
+                            xValue: segments[maxIndex].timestamp,
+                            yValue: maxPrice,
+                            backgroundColor: COLORS.UP,
+                            radius: 6
+                        },
+                        minLine: {
+                            type: 'line',
+                            xMin: segments[minIndex].timestamp,
+                            xMax: segments[minIndex].timestamp,
+                            yMin: yMin,
+                            yMax: minPrice,
+                            borderColor: COLORS.DOWN,
+                            borderWidth: 1,
+                            borderDash: [5, 5]
+                        },
+                        maxLine: {
+                            type: 'line',
+                            xMin: segments[maxIndex].timestamp,
+                            xMax: segments[maxIndex].timestamp,
+                            yMin: yMin,
+                            yMax: maxPrice,
+                            borderColor: COLORS.UP,
+                            borderWidth: 1,
+                            borderDash: [5, 5]
+                        },
+                        minLabel: {
+                            type: 'label',
+                            xValue: segments[minIndex].timestamp,
+                            yValue: minPrice,
+                            yAdjust: -25,
+                            backgroundColor: COLORS.DOWN,
+                            content: `Min: $${minPrice.toFixed(2)}`,
+                            color: '#FFFFFF',
+                            padding: 5,
+                            borderRadius: 4,
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            }
+                        },
+                        maxLabel: {
+                            type: 'label',
+                            xValue: segments[maxIndex].timestamp,
+                            yValue: maxPrice,
+                            yAdjust: 25,
+                            backgroundColor: COLORS.UP,
+                            content: `Max: $${maxPrice.toFixed(2)}`,
+                            color: '#FFFFFF',
+                            padding: 5,
+                            borderRadius: 4,
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            }
+                        }
+                    }
                 }
             },
             scales: {
@@ -218,8 +302,8 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
                         display: true,
                         color: COLORS.TEXT,
                         maxRotation: 0,
-                        maxTicksLimit: 20,  // Increased from default
-                        autoSkip: false,    // Prevents automatic tick skipping
+                        maxTicksLimit: 20,
+                        autoSkip: false,
                         font: { size: 11 },
                         callback: function(value, index) {
                             const date = new Date(this.getLabelForValue(value));
@@ -244,15 +328,12 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
                         callback: (value) => `$${value.toFixed(2)}`,
                         font: { size: 11 },
                         padding: 8,
-                        maxTicksLimit: 15,  // Increased from default
-                        autoSkip: false,    // Prevents automatic tick skipping
-                        sampleSize: 100     // Increased sample size
+                        maxTicksLimit: 8,
+                        autoSkip: false
                     },
                     display: true,
-                    beginAtZero: false,
                     min: yMin,
-                    max: yMax,
-                    grace: '5%'
+                    max: yMax
                 }
             },
             interaction: {
@@ -265,10 +346,8 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
         }
     };
 
-    // Create new chart instance
     const newChart = new Chart(ctx, chartConfig);
 
-    // Handle resize
     if (!canvas.resizeObserver) {
         canvas.resizeObserver = new ResizeObserver(entries => {
             for (let entry of entries) {
@@ -292,7 +371,6 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
         canvas.resizeObserver.observe(canvas.parentElement);
     }
 
-    // Clean up observer when chart is destroyed
     const originalDestroy = newChart.destroy;
     newChart.destroy = function() {
         if (canvas.resizeObserver) {
