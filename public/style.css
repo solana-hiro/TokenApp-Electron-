@@ -400,11 +400,11 @@ width: 100%;
 }
 
 .coin-icon {
-width: 40px;
-height: 40px;
-border-radius: 50%;
-object-fit: cover;
-background: rgba(255, 255, 255, 0.1);
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .coin-symbol {
