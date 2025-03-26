@@ -74,7 +74,6 @@ function searchCryptos(query) {
                 style.id = 'exchange-styles';
                 style.textContent = `
                 .exchange-results-container {
-                    background-color: var(--bg-color);
                     height: calc(100vh - 200px); /* Full height minus 100px */
                     overflow-y: auto;
                     border-radius: 8px;

@@ -31,14 +31,13 @@ function setupEventListeners() {
       console.error("Add crypto button not found");
   }
   
-  // Settings button
-  const settingsBtn = document.getElementById('settings-btn');
-  if (settingsBtn) {
-      settingsBtn.addEventListener('click', () => {
+  const settinBtns = document.querySelectorAll('.settings');
+  settinBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
           console.log("Settings button clicked");
           toggleSettingsPanel();
       });
-  }
+  });
   
   // Close settings button
   const closeSettingsBtn = document.getElementById('close-settings');
