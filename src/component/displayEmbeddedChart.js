@@ -204,10 +204,10 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
             maintainAspectRatio: false,
             layout: {
                 padding: {
-                    top: 30,    // Increased padding
-                    right: 30,
-                    bottom: 30,
-                    left: 30
+                    top: 10,    // Increased padding
+                    right: 5,
+                    bottom: 20,
+                    left: 5
                 }
             },
             plugins: {

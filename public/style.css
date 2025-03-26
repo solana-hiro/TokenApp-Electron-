@@ -1,3 +1,12 @@
+@font-face {
+    font-family: 'Tamil Sangam MN';
+    src: url('./font/Tamil Sangam MN.ttc') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Update the root styles to include the new font */
 :root {
     --primary-gradient: linear-gradient(135deg, #6964DE, #FCA5F1);
     --accent-gradient: linear-gradient(135deg, #13B0F5, #E70FAA);
@@ -6,7 +15,9 @@
     --pair-option-color: rgba(255, 255, 255, 0.6);
     --pair-select-option-bg: rgba(255, 255, 255, 0.1);
     --pair-select-option-border: 1px solid rgba(255, 255, 255, 0.2);
+    --font-family: 'Tamil Sangam MN', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
+
 * {
     margin: 0;
     padding: 0;
@@ -14,9 +25,22 @@
     user-select: none;
 }
 
-@font-face {
-    font-family: 'Grantha Sangam MN';
-    src: local('Grantha Sangam MN');
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-color) !important;
+    color: var(--text-color) !important;
+    overflow: hidden;
+    border-radius: 12px;
+    opacity: var(--opacity);
+}
+
+/* Apply the font to specific elements */
+.chart-title,
+.time-range-button,
+.token-symbol,
+.token-price,
+.price-change {
+    font-family: var(--font-family);
 }
 
 [data-theme="light"] {

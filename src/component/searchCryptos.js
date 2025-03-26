@@ -254,14 +254,13 @@ async function displayAllExchangeData(symbols, container) {
                 if (coin && coin.ImageUrl) {
                     imgUrl = `https://www.cryptocompare.com${coin.ImageUrl}`;
                 }
-                
                 const volume = result.data.volume ? formatVolume(result.data.volume, result.pair) : (result.pair === 'BTC' ? '₿0' : '$0');
                 const price = `${result.data.price.toFixed(2)}`;
-                
                 // Check if this symbol is already added
                 const isAdded = currentData.some(item => 
                     item.Symbol === symbol && 
-                    item.exchange === result.exchange
+                    item.exchange === result.exchange &&
+                    item.Pair === result.pair
                 );
         
                 const buttonText = isAdded ? 'Added ✓' : 'Add';
@@ -411,7 +410,7 @@ async function fetchExchangePricesForSymbol(symbol) {
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 3000);
-            const pairs = ['USDT', 'BTC'];
+            const pairs = ['USDT', 'USDC', 'BTC'];
 
             for (const pair of pairs) {
                 try {

@@ -807,8 +807,8 @@ async function refreshCryptoList() {
                 <div class="flex">
                     <img src="${imgUrl}" class="coin-icon">
                     <div class="crypto-info">
-                        <div class="crypto-exchange-badge" style="display: inline-block; font-size: 0.7rem; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 3px; margin-bottom: 3px; font-weight: bold;">${exchange.toUpperCase()}</div>
-                        <div class="crypto-name"><strong>${symbol}</strong>/${pair}</div>
+                        <div class="crypto-exchange-badge" style="display: inline-block; font-size: 0.7rem; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 3px; margin-bottom: 3px; font-weight: bold;">${exchange.charAt(0).toUpperCase() + exchange.slice(1).toLowerCase()}</div>
+                        <div class="crypto-name"><strong>${symbol}&nbsp;</strong>/${pair}</div>
                         <div class="crypto-volume">${volume}</div>
                     </div>
                 </div>

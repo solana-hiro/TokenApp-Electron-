@@ -1,5 +1,12 @@
 [
   {
+    "CoinName": "ADA",
+    "Symbol": "ADA",
+    "Pair": "USDC",
+    "ImageUrl": "/media/37746235/ada.png",
+    "exchange": "binance"
+  },
+  {
     "CoinName": "ETH",
     "Symbol": "ETH",
     "Pair": "BTC",
