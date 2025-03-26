@@ -56,7 +56,7 @@ async function displayEmbeddedChart(symbol, pair, chartContainer, chartType = CH
 
     try {
         const selectedTimeframe = TIMEFRAMES[timeframe] || TIMEFRAMES['1H'];
-        const chartData = await fetchCryptoCompareChartData(symbol, selectedTimeframe);
+        const chartData = await fetchCryptoCompareChartData(symbol, selectedTimeframe, pair);
         
         if (chartData && chartData.length > 0) {
             createEmbeddedChart(chartCanvas, chartData, symbol, pair);
@@ -70,9 +70,9 @@ async function displayEmbeddedChart(symbol, pair, chartContainer, chartType = CH
     }
 }
 
-async function fetchCryptoCompareChartData(symbol, timeframe) {
+async function fetchCryptoCompareChartData(symbol, timeframe, pair = 'USD') {
     if (!symbol || !timeframe) {
-        console.error('Invalid parameters:', { symbol, timeframe });
+        console.error('Invalid parameters:', { symbol, timeframe, pair });
         return null;
     }
 
@@ -80,9 +80,14 @@ async function fetchCryptoCompareChartData(symbol, timeframe) {
         let apiUrl;
         const params = {
             fsym: symbol.toUpperCase(),
-            tsym: 'USD',
+            tsym: pair.toUpperCase(), // Use the provided pair instead of hardcoding USD
             limit: timeframe.limit
         };
+
+        // Handle special cases for pairs
+        if (pair.toUpperCase() === 'USD') {
+            params.tsym = 'USDT'; // Use USDT as fallback for USD
+        }
 
         if (timeframe.interval === 'minute') {
             apiUrl = 'https://min-api.cryptocompare.com/data/v2/histominute';
@@ -104,9 +109,9 @@ async function fetchCryptoCompareChartData(symbol, timeframe) {
                 price: item.close
             }));
         }
-        throw new Error('Invalid data format from CryptoCompare');
+        throw new Error(`Invalid data format from CryptoCompare for ${symbol}/${pair}`);
     } catch (error) {
-        console.error('Error fetching CryptoCompare chart data:', error);
+        console.error(`Error fetching CryptoCompare chart data for ${symbol}/${pair}:`, error);
         return null;
     }
 }

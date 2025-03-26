@@ -331,7 +331,7 @@ async function displayAllExchangeData(symbols, container) {
                             };
             
                             // Add to beginning of array if not already exists
-                            if (!currentData.some(item => item.Symbol === symbol && item.exchange === exchange)) {
+                            if (!currentData.some(item => item.Symbol === symbol && item.exchange === exchange && item.Pair === pair)) {
                                 currentData.unshift(newToken);
                                 
                                 // Write back to data.json

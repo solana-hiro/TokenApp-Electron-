@@ -845,7 +845,7 @@ async function refreshCryptoList() {
                     const dataPath = path.join(__dirname, 'public', 'data.json');
                     const currentData = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
                     const updatedData = currentData.filter(item => 
-                        !(item.Symbol === symbol && item.exchange === exchange)
+                        !(item.Symbol === symbol && item.exchange === exchange && item.Pair === pair)
                     );
                     const chartArea = document.querySelector('.chart-area');
                     const chartTitle = document.querySelector('.chart-title');
