@@ -1,5 +1,12 @@
 [
   {
+    "CoinName": "BTC",
+    "Symbol": "BTC",
+    "Pair": "USDT",
+    "ImageUrl": "/media/37746251/btc.png",
+    "exchange": "binance"
+  },
+  {
     "CoinName": "ADA",
     "Symbol": "ADA",
     "Pair": "USDC",

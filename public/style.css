@@ -74,7 +74,7 @@ body {
     --pair-option-color: rgba(255, 255, 255, 0.6);
     --pair-select-option-bg: rgba(255, 255, 255, 0.1);
     --pair-select-option-border: 1px solid rgba(255, 255, 255, 0.2);
-    --chart-area-bg: rgba(56, 56, 56, 0.8);
+    --chart-area-bg: rgba(26, 31, 49, 0.8);
 }
 
 
@@ -405,11 +405,10 @@ width: 100%;
 }
 
 .coin-icon {
-    width: 52px;
-    height: 52px;
+    width: 35px;
+    height: 35px;
     border-radius: 50%;
     object-fit: cover;
-    background: rgba(255, 255, 255, 0.1);
 }
 
 .coin-symbol {

@@ -299,7 +299,7 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
             scales: {
                 x: {
                     grid: { 
-                        display: true,
+                        display: false,
                         drawBorder: false,
                         color: COLORS.GRID
                     },
@@ -326,7 +326,7 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
                     grid: { 
                         color: COLORS.GRID,
                         drawBorder: false,
-                        display: true
+                        display: false
                     },
                     ticks: {
                         color: COLORS.TEXT,
