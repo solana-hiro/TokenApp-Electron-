@@ -567,7 +567,8 @@ function formatChange(changePercent) {
     const absChange = Math.abs(numChange);
     
     if (absChange >= 100) {
-        decimalPlaces = 1; // Show only 1 decimal for large changes
+        numChange = numChange/100;
+        decimalPlaces = 2; // Show only 1 decimal for large changes
     } else if (absChange >= 10) {
         decimalPlaces = 2; // Show 2 decimals for medium changes
     } else {
@@ -575,6 +576,7 @@ function formatChange(changePercent) {
     }
     
     // Add plus sign for positive values, keep minus for negative
+    
     const sign = numChange > 0 ? '+' : '';
     
     // Format with appropriate decimal places
@@ -582,7 +584,7 @@ function formatChange(changePercent) {
 }
 
 // Also add the missing formatPrice function if you don't have it
-function formatPrice(price) {
+function formatPrice(price, pair) {
     if (price === undefined || price === null || isNaN(price)) {
         return '-.--';
     }
@@ -597,7 +599,7 @@ function formatPrice(price) {
         // Automatic mode - adjust based on price
         if (numPrice >= 1000) {
             decimalPlaces = 0; // $1,000+: show whole dollars
-        } else if (numPrice >= 100) {
+        } else if (numPrice >= 100) {crypto-price
             decimalPlaces = 2; // $100-999: show 2 decimals
         } else if (numPrice >= 1) {
             decimalPlaces = 3; // $1-99: show 3 decimals
@@ -799,24 +801,32 @@ async function refreshCryptoList() {
             item.dataset.pair = pair;
             item.dataset.exchange = exchange;
 
-            const price = priceData ? formatPrice(priceData.price) : '...';
+            const price = priceData ? formatPrice(priceData.price, pair) : '...';
             const change = priceData ? formatChange(priceData.change) : '0.00%';
             const volume = priceData ? formatVolume(priceData.volume) : '0';
-
+            console.log(`Price for ${pair}`, (pair === 'BTC'));
             item.innerHTML = `
-                <div class="flex">
-                    <img src="${imgUrl}" class="coin-icon">
-                    <div class="crypto-info">
-                        <div class="crypto-exchange-badge" style="display: inline-block; font-size: 0.7rem; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 3px; font-weight: bold;">${exchange.charAt(0).toUpperCase() + exchange.slice(1).toLowerCase()}</div>
-                        <div class="crypto-name"><strong>${symbol}&nbsp;</strong>/${pair}</div>
-                        <div class="crypto-volume">${volume}</div>
-                    </div>
+            <div class="flex">
+                <img src="${imgUrl}" class="coin-icon">
+                <div class="crypto-info">
+                    <div class="crypto-exchange-badge" style="display: inline-block; font-size: 0.7rem; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 3px; font-weight: bold;">${exchange.charAt(0).toUpperCase() + exchange.slice(1).toLowerCase()}</div>
+                    <div class="crypto-name"><strong>${symbol}&nbsp;</strong>/${pair}</div>
+                    <div class="crypto-volume">${volume}</div>
                 </div>
-                <div class="flex">
-                    <div class="crypto-price">${price}</div>
-                    <div class="crypto-change ${priceData?.change > 0 ? 'up' : priceData?.change < 0 ? 'down' : ''}">${change}</div>
-                </div>
-                <button class="btn remove" data-symbol="${symbol}" data-pair="${pair}" data-exchange="${exchange}" style="position: absolute; top: 1px; right: 1px;">×</button>
+            </div>
+            <div class="flex ">
+                <div class="for-crypto-price flex" style="gap: 0px;">
+                    ${pair === 'BTC' 
+                        ? `<img src="https://www.cryptocompare.com/media/37746251/btc.png" class="coin-icon" style="width: 16px; height: 16px; margin-right: 4px;align-items: flex-end;">
+                        <div class="crypto-price">
+                            ${price}
+                        </div>`
+                        : `$<div class="crypto-price">${price}</div>`
+                    }
+                </div>  
+                <div class="crypto-change ${priceData?.change > 0 ? 'up' : priceData?.change < 0 ? 'down' : ''}">${change}</div>
+            </div>
+            <button class="btn remove" data-symbol="${symbol}" data-pair="${pair}" data-exchange="${exchange}" style="position: absolute; top: 1px; right: 1px;">×</button>
             `;
 
             // Add click event for chart display
@@ -936,7 +946,7 @@ function updateCryptoPrice(cryptoKey, price, changePercent, volume, source) {
     
     const priceElement = cryptoElement.querySelector('.crypto-price');
     if (priceElement) {
-        priceElement.textContent = formatPrice(price);
+        priceElement.textContent = formatPrice(price, pair);
     }
     
     const changeElement = cryptoElement.querySelector('.crypto-change');
@@ -1043,10 +1053,6 @@ async function loadCryptoList() {
         if (statusEl) statusEl.textContent = "Using top cryptocurrencies (API unavailable)";
         return true;
     }
-}
-
-function formatPrice(price) {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price);
 }
 
 // Add this function to clean up any invalid pairs

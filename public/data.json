@@ -19,19 +19,5 @@
     "Pair": "BTC",
     "ImageUrl": "/media/37746238/eth.png",
     "exchange": "binance"
-  },
-  {
-    "CoinName": "ADA",
-    "Symbol": "ADA",
-    "Pair": "USDT",
-    "ImageUrl": "/media/37746235/ada.png",
-    "exchange": "binance"
-  },
-  {
-    "CoinName": "ETH",
-    "Symbol": "ETH",
-    "Pair": "BTC",
-    "ImageUrl": "/media/37746238/eth.png",
-    "exchange": "kraken"
   }
 ]

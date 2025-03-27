@@ -330,7 +330,7 @@ function createEmbeddedChart(canvas, chartData, symbol, pair) {
                     },
                     ticks: {
                         color: COLORS.TEXT,
-                        callback: (value) => `$${value.toFixed(2)}`,
+                        callback: (value) => pair === 'BTC' ? `${value.toFixed(2)}₿` : `$${value.toFixed(2)}`,
                         font: { size: 11 },
                         padding: 8,
                         maxTicksLimit: 8,
