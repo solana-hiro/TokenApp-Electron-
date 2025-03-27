@@ -10,6 +10,7 @@ const EXCHANGES = ['binance', 'coinbase', 'kraken', 'okx', 'mexc', 'gate', 'bitg
 const supportedPairsCache = {}; // Format: {exchange: {symbolPair: true}}
 const priceCache = {}; // Format: {symbol/pair: {price: number, source: string, timestamp: number}}
 const CACHE_EXPIRY = 60 * 1000; // 60 seconds cache expiry
+let selectedToken = null;
 
 const createPairSelectorModal = require('./src/component/createPairSelectorModal');
 let currentTheme = localStorage.getItem('theme') || 'light';
@@ -755,8 +756,27 @@ ipcRenderer.on('pair-updated', (event, pair) => {
 });
 const setupBinanceWebSocket = require('./src/component/setupBinanceWebSocket');
 
-// Set up resizing functionality
-
+function updatePageTitle() {
+    if (selectedToken && priceCache[selectedToken]) {
+        const [symbol, pair] = selectedToken.split('/');
+        const price = formatPrice(priceCache[selectedToken].price, pair);
+        const change = priceCache[selectedToken].change;
+        const arrow = change >= 0 ? '↑' : '↓';
+        const volume = formatVolume(priceCache[selectedToken].volume, pair);
+        
+        // Create title with selected token's information
+        document.title = `${symbol}/${pair}: ${price} ${arrow}${Math.abs(change).toFixed(1)}% | Vol: ${volume} - Coin Tracker`;
+    } else {
+        // Fallback to showing BTC if no token is selected
+        const btcKey = 'BTC/USDT';
+        if (priceCache[btcKey]) {
+            const price = formatPrice(priceCache[btcKey].price, 'USDT');
+            const change = priceCache[btcKey].change;
+            const arrow = change >= 0 ? '↑' : '↓';
+            document.title = `BTC: ${price} ${arrow}${Math.abs(change).toFixed(1)}% - Coin Tracker`;
+        }
+    }
+}
 
 // Update pair buttons UI
 function updatePairButtons(activePair) {
@@ -842,7 +862,7 @@ async function refreshCryptoList() {
                     if (i !== item) i.classList.remove('active');
                 });
                 item.classList.toggle('active');
-                console.log(`Displaying chart for ${symbol}/${pair}`);
+                selectedToken = `${symbol}/${pair}`;
                 initializeChartArea();
                 displayEmbeddedChart(symbol, pair, chartArea);
                 initDragAndDrop();
@@ -1001,7 +1021,7 @@ function updateCryptoPrice(cryptoKey, price, changePercent, volume, source) {
             };
         }
     }
-    
+    updatePageTitle();
     ipcRenderer.send('price-update', priceData);
 }
 
