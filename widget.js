@@ -33,7 +33,6 @@ function initializeTheme() {
     document.querySelectorAll('.theme-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.theme === currentTheme);
     });
-
     const opacity = getComputedStyle(document.documentElement).getPropertyValue('--opacity');
     document.body.style.opacity = opacity;
 }
@@ -554,7 +553,8 @@ function formatChange(changePercent) {
     }
     
     // Convert to number if it's a string
-    const numChange = parseFloat(changePercent);
+    let numChange = parseFloat(changePercent); // Changed from const to let
+    if (isNaN(numChange)) return '0.00%';
     
     // Add validation for extreme values
     if (numChange > 999999) {
@@ -568,16 +568,15 @@ function formatChange(changePercent) {
     const absChange = Math.abs(numChange);
     
     if (absChange >= 100) {
-        numChange = numChange/100;
-        decimalPlaces = 2; // Show only 1 decimal for large changes
+        numChange = numChange/100; // This was causing the error because numChange was const
+        decimalPlaces = 2;
     } else if (absChange >= 10) {
-        decimalPlaces = 2; // Show 2 decimals for medium changes
+        decimalPlaces = 2;
     } else {
-        decimalPlaces = 2; // Show 2 decimals for small changes
+        decimalPlaces = 2;
     }
     
     // Add plus sign for positive values, keep minus for negative
-    
     const sign = numChange > 0 ? '+' : '';
     
     // Format with appropriate decimal places
@@ -758,24 +757,38 @@ ipcRenderer.on('pair-updated', (event, pair) => {
 });
 const setupBinanceWebSocket = require('./src/component/setupBinanceWebSocket');
 
-function updatePageTitle() {
-    if (selectedToken && priceCache[selectedToken]) {
+async function updatePageTitle() {
+    if (selectedToken) {
         const [symbol, pair] = selectedToken.split('/');
-        const price = formatPrice(priceCache[selectedToken].price, pair);
-        const change = priceCache[selectedToken].change;
-        const arrow = change >= 0 ? '↑' : '↓';
-        const volume = formatVolume(priceCache[selectedToken].volume, pair);
         
-        // Create title with selected token's information
-        document.title = `${symbol}/${pair}: ${price} ${arrow}${Math.abs(change).toFixed(1)}% | Vol: ${volume} - Coin Tracker`;
+        // Get price and change from the DOM elements
+        const selectedItem = document.querySelector(`.crypto-item[data-symbol="${symbol}"][data-pair="${pair}"]`);
+        if (selectedItem) {
+            const priceElement = selectedItem.querySelector('.crypto-price');
+            const changeElement = selectedItem.querySelector('.crypto-change');
+            const volumeElement = selectedItem.querySelector('.crypto-volume');
+            
+            const price = priceElement ? priceElement.textContent : '0.00';
+            const change = changeElement ? changeElement.textContent.replace('+', '').replace('%', '') : '0.00';
+            const volume = volumeElement ? volumeElement.textContent : '0';
+            const arrow = parseFloat(change) >= 0 ? '↑' : '↓';
+            
+            document.title = `${symbol}/${pair}: ${price} ${arrow}${Math.abs(parseFloat(change))}% | Vol: ${volume} - Coin Tracker`;
+        }
     } else {
         // Fallback to showing BTC if no token is selected
-        const btcKey = 'BTC/USDT';
-        if (priceCache[btcKey]) {
-            const price = formatPrice(priceCache[btcKey].price, 'USDT');
-            const change = priceCache[btcKey].change;
-            const arrow = change >= 0 ? '↑' : '↓';
-            document.title = `BTC: ${price} ${arrow}${Math.abs(change).toFixed(1)}% - Coin Tracker`;
+        const btcItem = document.querySelector('.crypto-item[data-symbol="BTC"][data-pair="USDT"]');
+        if (btcItem) {
+            const priceElement = btcItem.querySelector('.crypto-price');
+            const changeElement = btcItem.querySelector('.crypto-change');
+            
+            const price = priceElement ? priceElement.textContent : '0.00';
+            const change = changeElement ? changeElement.textContent.replace('+', '').replace('%', '') : '0.00';
+            const arrow = parseFloat(change) >= 0 ? '↑' : '↓';
+            
+            document.title = `BTC: ${price} ${arrow}${Math.abs(parseFloat(change))}% - Coin Tracker`;
+        } else {
+            document.title = 'Coin Tracker';
         }
     }
 }
@@ -860,11 +873,11 @@ async function refreshCryptoList() {
             `;
 
             // Add click event for chart display
-            item.addEventListener('click', (e) => {
+            item.addEventListener('click', async (e) => {
                 if (e.target.classList.contains('remove')) return;
                 const chartArea = document.querySelector('.chart-area');
                 if (!chartArea) return;
-
+            
                 // Show the chart area if it's hidden
                 chartArea.classList.add('visible');
                 const allItems = document.querySelectorAll('.crypto-item');
@@ -872,7 +885,13 @@ async function refreshCryptoList() {
                     if (i !== item) i.classList.remove('active');
                 });
                 item.classList.toggle('active');
+                
+                // Update selectedToken and title
                 selectedToken = `${symbol}/${pair}`;
+                
+                // Add this line to update the title immediately
+                await updatePageTitle();
+                
                 initializeChartArea();
                 displayEmbeddedChart(symbol, pair, chartArea);
                 initDragAndDrop();
@@ -968,7 +987,7 @@ function setupPricePolling(exchange, symbols) {
     }, POLL_INTERVAL);
 }
 
-function updateCryptoPrice(cryptoKey, price, changePercent, volume, source) {
+async function updateCryptoPrice(cryptoKey, price, changePercent, volume, source) {
     const [symbol, pair] = cryptoKey.split('/');
     
     const cryptoElement = document.querySelector(`.crypto-item[data-symbol="${symbol}"][data-pair="${pair}"]`);
@@ -1019,7 +1038,6 @@ function updateCryptoPrice(cryptoKey, price, changePercent, volume, source) {
     };
     
     lastPrices[cryptoKey] = price;
-
     const { ipcRenderer } = require('electron');
     const priceData = {};
     for (const key in priceCache) {
@@ -1031,8 +1049,8 @@ function updateCryptoPrice(cryptoKey, price, changePercent, volume, source) {
             };
         }
     }
-    updatePageTitle();
     ipcRenderer.send('price-update', priceData);
+    await updatePageTitle();
 }
 
 ipcRenderer.on('preferences', (event, preferences) => {
