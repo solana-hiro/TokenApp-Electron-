@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { createCanvas } = require('canvas');
 
 let tray = null;
 let isQuitting = false;
@@ -142,28 +143,52 @@ function createWindow() {
   });
 }
 
-// Add the function to create tray
+function createTextIcon(price, change) {
+  // First create the canvas with our text
+  const CANVAS_WIDTH = 96;
+  const CANVAS_HEIGHT = 24;
+  const FONT_SIZE = 14;
+
+  const canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
+  const ctx = canvas.getContext('2d');
+
+  // Clear background
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Draw text
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = `bold ${FONT_SIZE}px Arial`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  
+  ctx.fillText("ABCD", canvas.width/2, canvas.height/2);
+
+  // Create the native image and resize it
+  const icon = nativeImage.createFromDataURL(canvas.toDataURL());
+  
+  // Resize the icon - try different sizes like 24x24, 32x32, or 48x48
+  return icon.resize({
+    width: 48,
+    height: 24,
+    quality: 'best'
+  });
+}
+
 function createTray() {
   try {
-    // Try to load the app icon first
-    const iconPath = path.join(__dirname, 'icon.ico');
-    let trayIcon;
+    let trayIcon = createTextIcon(0, 0);
     
-    if (fs.existsSync(iconPath)) {
-      trayIcon = nativeImage.createFromPath(iconPath);
-    } else {
-      // Fallback to a simple icon if the app icon doesn't exist
-      trayIcon = nativeImage.createFromDataURL(`data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABs0lEQVR42mNkwAEazsz4z8DAyIjLDGz8oRwMDNeN/RiRxRnRBJm6v/xnZGb+z8DAhN0ABkYGBkzN6OD2X0dUE/D9Z2RiYnz65g+yGBOyAKqLsRiAbAA2cP75X8b/DP8ZjVXYGVpvfmf4wi7AwIjuAqwGwNTfN3FjePj+D8OzL38Z7JU4GFa9/crgIsLEiO4FRlwGfP77j+EM01+GMBVOBmFOZgZpHhaGX7//MfQIsjAK/fvP+J+RkQnd2YzIYYCseebrv4whYhygoIBoPnb/JwMLCzODlgArg9nNrwyf/jAwMDOBwgTTAAbGllNv/lVzMzC0cLEysDIxMmRd/sYw1FyI4e6XfwzP//5jZONgYbz/9hfj//+MyC7Gm5A+MPCxtX/5y/iDnQla8P1nePT3L8PHH38Zf/z8y/T+xx/Gf8xMjP95WRlZvv9lZPr/H+xiXAa8YOBnZQNphoHrDP8YuRgYGH8w/GdkZf7PysjCwvTl+z9Gxn8gsRfIiRgr+M/AxDj/2Z//PxkYmFUZGJju/GdgFPjPwPT3D1jNpb8M/9jYGRlZWSB6MRIVdgNw5YT/OHMDAFiVxVRVY0bjAAAAAElFTkSuQmCC`);
-    }
+    // You can also resize here if needed
+    trayIcon = trayIcon.resize({
+      width: 48,  // Try different widths
+      height: 24  // Try different heights
+    });
     
-    // Create the tray icon
     tray = new Tray(trayIcon);
-    tray.setToolTip('Loading ...');
-    
-    // Add context menu to tray
+    tray.setToolTip('Coin Tracker');
     updateTrayMenu();
     
-    // Add click handler
     tray.on('click', () => {
       toggleWindowVisibility();
     });
@@ -172,7 +197,6 @@ function createTray() {
     console.error('Error creating tray:', error);
   }
 }
-
 // Create a function to toggle window visibility
 function toggleWindowVisibility() {
   if (mainWindow) {

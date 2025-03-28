@@ -593,29 +593,31 @@ function formatPrice(price, pair) {
     // Convert to number if it's a string
     const numPrice = parseFloat(price);
     
-    // Determine appropriate decimal places based on price magnitude and settings
+    // Determine appropriate decimal places based on price magnitude
     let decimalPlaces;
     
     if (decimalPlacesMode === 'auto') {
-        // Automatic mode - adjust based on price
         if (numPrice >= 1000) {
-            decimalPlaces = 0; // $1,000+: show whole dollars
-        } else if (numPrice >= 100) {crypto-price
-            decimalPlaces = 2; // $100-999: show 2 decimals
+            decimalPlaces = 2; // $1,000+: show 2 decimals
         } else if (numPrice >= 1) {
-            decimalPlaces = 3; // $1-99: show 3 decimals
-        } else if (numPrice >= 0.01) {
-            decimalPlaces = 5; // $0.01-0.99: show 5 decimals
+            decimalPlaces = 4; // $1-999: show 4 decimals
         } else {
-            decimalPlaces = 8; // Below $0.01: show up to 8 decimals
+            // For numbers less than 1, count zeros after decimal point
+            const priceStr = numPrice.toString();
+            const matchZeros = priceStr.match(/^0\.0*/);
+            if (matchZeros) {
+                // Count leading zeros after decimal and add 4 more digits
+                decimalPlaces = matchZeros[0].length - 2 + 4;
+            } else {
+                decimalPlaces = 4;
+            }
         }
     } else {
         // Fixed decimal places mode
         decimalPlaces = parseInt(decimalPlacesMode);
-        if (isNaN(decimalPlaces)) decimalPlaces = 2; // Default to 2 if invalid
+        if (isNaN(decimalPlaces)) decimalPlaces = 4; // Default to 4 if invalid
     }
     
-    // Use toFixed for a specific number of decimal places
     return numPrice.toFixed(decimalPlaces);
 }
 
@@ -824,7 +826,6 @@ async function refreshCryptoList() {
             const price = priceData ? formatPrice(priceData.price, pair) : '...';
             const change = priceData ? formatChange(priceData.change) : '0.00%';
             const volume = priceData ? formatVolume(priceData.volume) : '0';
-            console.log(`Price for ${pair}`, (pair === 'BTC'));
             item.innerHTML = `
             <div class="flex">
                 <img src="${imgUrl}" class="coin-icon">
@@ -834,16 +835,25 @@ async function refreshCryptoList() {
                     <div class="crypto-volume">${volume}</div>
                 </div>
             </div>
-            <div class="flex ">
-                <div class="for-crypto-price flex" style="gap: 0px;">
-                    ${pair === 'BTC' 
-                        ? `<img src="https://www.cryptocompare.com/media/37746251/btc.png" class="coin-icon" style="width: 16px; height: 16px; margin-right: 4px;align-items: flex-end;">
-                        <div class="crypto-price">
-                            ${price}
+            <div class="flex">
+                ${pair === 'BTC' 
+                    ? `<div class="flex" style="flex-direction:column; gap:4px; align-items: flex-end;">
+                            <div class="flex" style="gap: 0px; align-items: flex-end;">
+                                $<div class="crypto-price-usdt">
+                                    ${await getBTCValue(price, symbol)}
+                                </div>
+                            </div>
+                            <div class="flex" style="gap: 0px; align-items: flex-end;">
+                                <img src="https://www.cryptocompare.com/media/37746251/btc.png" class="coin-icon" style="width: 16px; height: 16px; margin-right: 4px;align-items: flex-end;">
+                                <div class="crypto-price">
+                                    ${price}
+                                </div>
+                            </div>
                         </div>`
-                        : `$<div class="crypto-price">${price}</div>`
-                    }
-                </div>  
+                    : `<div class="for-crypto-price flex" style="gap: 0px; align-items: flex-end;">
+                        $<div class="crypto-price">${price}</div>
+                    </div>`
+                }
                 <div class="crypto-change ${priceData?.change > 0 ? 'up' : priceData?.change < 0 ? 'down' : ''}">${change}</div>
             </div>
             <button class="btn remove" data-symbol="${symbol}" data-pair="${pair}" data-exchange="${exchange}" style="position: absolute; top: 1px; right: 1px;">×</button>
@@ -1107,5 +1117,20 @@ function cleanupInvalidPairs() {
         
         // Refresh the UI after cleanup
         refreshCryptoList();
+    }
+}
+
+async function getBTCValue(price, symbol) {
+    try {
+        const btcPriceData = await fetchPriceFromExchange('binance', 'BTC', 'USDT');
+        const btcUsdtPrice = btcPriceData?.price || 1;
+        console.log("btcUsdtPrice",btcUsdtPrice);
+        if (symbol === 'BTC') {
+            return await formatPrice(price * btcUsdtPrice);
+        }
+        return await formatPrice(price * btcUsdtPrice);
+    } catch (error) {
+        console.error('Error fetching BTC price:', error);
+        return price;
     }
 }
