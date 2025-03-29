@@ -39,7 +39,6 @@ function initializeTheme() {
 
 function switchTheme(theme) {
     currentTheme = theme;
-    console.log("Switching to theme:", theme);
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
     document.querySelectorAll('.theme-btn').forEach(btn => {
@@ -76,8 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             toggleSearchModal(false);
         });
     }
-
-    
+  
     // Set up all event listeners properly
     setupEventListeners();
     applyDarkTheme();
@@ -103,12 +101,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupSortingControls();
     initializeChartArea();
     refreshCryptoList(); 
-    console.log("Initialization complete");
 
 });
 
 ipcRenderer.on('refresh-data', () => {
-    console.log("Received refresh command from tray");
     
     // Close and reopen WebSocket connections if using WebSockets
     if (typeof setupBinanceWebSocket === 'function') {
@@ -155,10 +151,8 @@ async function fetchPriceFromExchange(exchange, base, quote, signal) {
                             volume: parseFloat(resp.data.volume) || parseFloat(resp.data.quoteVolume) || 0,
                             source: 'binance'
                         };
-                        console.log(`Got Binance volume for ${base}/${quote}: ${result.volume}`);
                     }
                 } catch (error) {
-                    console.log(`Binance does not support ${base}/${quote}`);
                 }
                 break;
                 
@@ -186,7 +180,6 @@ async function fetchPriceFromExchange(exchange, base, quote, signal) {
                                 volume: volume,
                                 source: 'coinbase'
                             };
-                            console.log(`Got Coinbase volume for ${base}/${quote}: ${volume}`);
                         } catch (e) {
                             // If stats fails, at least return the price
                             result = {
@@ -198,7 +191,6 @@ async function fetchPriceFromExchange(exchange, base, quote, signal) {
                         }
                     }
                 } catch (error) {
-                    console.log(`Coinbase does not support ${base}/${quote}`);
                 }
                 break;
             case 'kraken':
@@ -223,10 +215,8 @@ async function fetchPriceFromExchange(exchange, base, quote, signal) {
                             volume: volume,
                             source: 'kraken'
                         };
-                        console.log(`Got Kraken volume for ${base}/${quote}: ${volume}`);
                     }
                 } catch (error) {
-                    console.log(`Kraken does not support ${base}/${quote}`);
                 }
                 break;
                 
@@ -244,10 +234,8 @@ async function fetchPriceFromExchange(exchange, base, quote, signal) {
                             volume: volume,
                             source: 'okx'
                         };
-                        console.log(`Got OKX volume for ${base}/${quote}: ${volume}`);
                     }
                 } catch (error) {
-                    console.log(`OKX does not support ${base}/${quote}`);
                 }
                 break;
                 
@@ -265,10 +253,8 @@ async function fetchPriceFromExchange(exchange, base, quote, signal) {
                             volume: volume,
                             source: 'mexc'
                         };
-                        console.log(`Got MEXC volume for ${base}/${quote}: ${volume}`);
                     }
                 } catch (error) {
-                    console.log(`MEXC does not support ${base}/${quote}`);
                 }
                 break;
                 
@@ -285,10 +271,8 @@ async function fetchPriceFromExchange(exchange, base, quote, signal) {
                             volume: volume,
                             source: 'gate'
                         };
-                        console.log(`Got Gate.io volume for ${base}/${quote}: ${volume}`);
                     }
                 } catch (error) {
-                    console.log(`Gate.io does not support ${base}/${quote}`);
                 }
                 break;
                 
@@ -306,10 +290,8 @@ async function fetchPriceFromExchange(exchange, base, quote, signal) {
                             volume: volume,
                             source: 'bitget'
                         };
-                        console.log(`Got Bitget volume for ${base}/${quote}: ${volume}`);
                     }
                 } catch (error) {
-                    console.log(`Bitget does not support ${base}/${quote}`);
                 }
                 break;
                 
@@ -327,10 +309,8 @@ async function fetchPriceFromExchange(exchange, base, quote, signal) {
                             volume: volume,
                             source: 'kucoin'
                         };
-                        console.log(`Got KuCoin volume for ${base}/${quote}: ${volume}`);
                     }
                 } catch (error) {
-                    console.log(`KuCoin does not support ${base}/${quote}`);
                 }
                 break;
                 
@@ -348,10 +328,8 @@ async function fetchPriceFromExchange(exchange, base, quote, signal) {
                             volume: volume,
                             source: 'bybit'
                         };
-                        console.log(`Got Bybit volume for ${base}/${quote}: ${volume}`);
                     }
                 } catch (error) {
-                    console.log(`Bybit does not support ${base}/${quote}`);
                 }
                 break;
                 
@@ -370,10 +348,8 @@ async function fetchPriceFromExchange(exchange, base, quote, signal) {
                             volume: volume,
                             source: 'htx'
                         };
-                        console.log(`Got HTX volume for ${base}/${quote}: ${volume}`);
                     }
                 } catch (error) {
-                    console.log(`HTX does not support ${base}/${quote}`);
                 }
                 break;
                 
@@ -436,7 +412,6 @@ function addVolumeTracking() {
                 }
                 // Add other exchange-specific volume fetching here as needed
             } catch (e) {
-                console.log(`Could not fetch additional volume data for ${base}/${quote} on ${exchange}`);
                 result.volume = 0;
             }
         }
@@ -529,7 +504,6 @@ console.error('IPC error:', error);
 
 
 function setupSortingControls() {
-    console.log("Setting up sorting controls");
     
     const sortButtons = document.querySelectorAll('.sort-btn');
     if (sortButtons.length === 0) {
@@ -539,12 +513,10 @@ function setupSortingControls() {
     
     sortButtons.forEach(btn => {
         btn.addEventListener('click', () => {
-            console.log(`Sort button clicked: ${btn.getAttribute('data-sort')}`);
             const method = btn.getAttribute('data-sort');
         });
     });
     
-    console.log("Sort buttons configured successfully");
 }
 
 function formatChange(changePercent) {
@@ -621,7 +593,6 @@ function formatPrice(price, pair) {
 }
 
 function toggleSearchModal(forceShow) {
-    console.log(`Toggle search modal (forceShow: ${forceShow})`);
     const searchModal = document.getElementById('search-modal');
     
     if (!searchModal) {
@@ -637,7 +608,6 @@ function toggleSearchModal(forceShow) {
     
     if (shouldShow && !isCurrentlyShown) {
         // SHOW the modal
-        console.log("Showing search modal");
         searchModal.style.display = 'block';
         // Use requestAnimationFrame to ensure display: block is applied before adding visible class
         requestAnimationFrame(() => {
@@ -676,7 +646,6 @@ function toggleSearchModal(forceShow) {
         
     } else if (!shouldShow && isCurrentlyShown) {
         // HIDE the modal
-        console.log("Hiding search modal");
         searchModal.classList.remove('visible');
         
         // Wait for animation to complete before hiding
@@ -1105,7 +1074,6 @@ async function loadCryptoList() {
 
 // Add this function to clean up any invalid pairs
 function cleanupInvalidPairs() {
-    console.log("Cleaning up invalid pairs...");
     const invalidPairs = [];
     
     trackedCryptos.forEach(crypto => {
@@ -1114,7 +1082,6 @@ function cleanupInvalidPairs() {
             
             // Check for self-pairs (like BTC/BTC)
             if (symbol === pair) {
-                console.log(`Found invalid self-pair: ${crypto}`);
                 invalidPairs.push(crypto);
             }
         }
@@ -1122,18 +1089,13 @@ function cleanupInvalidPairs() {
     
     // Remove any found invalid pairs
     if (invalidPairs.length > 0) {
-        console.log(`Found ${invalidPairs.length} invalid pairs to remove`);
         invalidPairs.forEach(pair => {
             const index = trackedCryptos.indexOf(pair);
             if (index !== -1) {
                 trackedCryptos.splice(index, 1);
             }
-            
-            // Notify the main process as well
             ipcRenderer.send('remove-crypto', pair);
         });
-        
-        // Refresh the UI after cleanup
         refreshCryptoList();
     }
 }
@@ -1142,7 +1104,6 @@ async function getBTCValue(price, symbol) {
     try {
         const btcPriceData = await fetchPriceFromExchange('binance', 'BTC', 'USDT');
         const btcUsdtPrice = btcPriceData?.price || 1;
-        console.log("btcUsdtPrice",btcUsdtPrice);
         if (symbol === 'BTC') {
             return await formatPrice(price * btcUsdtPrice);
         }

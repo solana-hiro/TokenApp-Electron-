@@ -5,7 +5,7 @@ const { createCanvas } = require('canvas');
 
 let tray = null;
 let isQuitting = false;
-let mainWindow;
+let mainWindow = null;
 
 let preferences = {
   position: { x: null, y: null },
@@ -280,18 +280,14 @@ function updateTrayMenu() {
 // Modify app.whenReady to create the tray
 app.whenReady().then(() => {
   createWindow();
-  createTray(); // Add this line to create the tray icon
-  
-  const contextMenu = Menu.buildFromTemplate([
-    { label: 'Quit', click: () => app.quit() }
-  ]);
-  tray.setContextMenu(contextMenu);
+  createTray();
 
   app.on('activate', function () {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-      createTray(); // Also recreate tray if needed
-    }
+      if (mainWindow === null) {
+          createWindow();
+      } else {
+          mainWindow.show();
+      }
   });
 });
 
@@ -310,12 +306,14 @@ app.on('before-quit', () => {
   isQuitting = true;
 });
 
-// Add these new IPC handlers
 
 // Show the window
 ipcMain.on('show-window', () => {
-  if (mainWindow && !mainWindow.isVisible()) {
-    mainWindow.show();
+  if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+  } else {
+      createWindow();
   }
 });
 
@@ -369,6 +367,13 @@ process.on('uncaughtException', (error) => {
   console.error('Uncaught exception in main process:', error);
 });
 
+app.on('window-all-closed', function () {
+  if (process.platform !== 'darwin') {
+      if (isQuitting) {
+          app.quit();
+      }
+  }
+});
 
 // Load saved preferences if available
 
