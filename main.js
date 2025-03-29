@@ -408,13 +408,13 @@ function cleanupInvalidPairs() {
 }
 
 
-app.whenReady().then(() => {
-  createWindow();
+// app.whenReady().then(() => {
+//   createWindow();
 
-  app.on('activate', function () {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
-});
+//   app.on('activate', function () {
+//     if (BrowserWindow.getAllWindows().length === 0) createWindow();
+//   });
+// });
 
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit();
@@ -517,8 +517,8 @@ ipcMain.on('remove-crypto', (event, symbol) => {
     try {
       // Make sure we have a valid array to send
       const safeArray = Array.isArray(preferences.cryptos) ? 
-                         preferences.cryptos.filter(item => item && typeof item === 'string') : 
-                         [];
+        preferences.cryptos.filter(item => item && typeof item === 'string') : 
+        [];
       event.reply('cryptos-updated', safeArray);
     } catch (err) {
       console.error("Error sending cryptos-updated reply:", err);
