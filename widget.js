@@ -760,6 +760,7 @@ async function updatePageTitle() {
             document.title = 'Coin Tracker';
         }
     }
+    ipcRenderer.send('update-tray-title', document.title);
 }
 
 // Update pair buttons UI
