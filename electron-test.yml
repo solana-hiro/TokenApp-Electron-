@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    runs-on: macos-latest  # This specifies a macOS environment
+    runs-on: macos-latest
 
     steps:
       - name: Check out the repository
@@ -16,10 +16,10 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '14'  # Use the version of Node.js you need
+          node-version: '14'
 
       - name: Install dependencies
         run: npm install
 
       - name: Run Tests
-        run: npm test  # Replace with your test command
+        run: npm test
