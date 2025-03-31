@@ -1,0 +1,25 @@
+name: Electron App Test
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: macos-latest  # This specifies a macOS environment
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'  # Use the version of Node.js you need
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Tests
+        run: npm test  # Replace with your test command
