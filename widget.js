@@ -72,6 +72,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const closeSearchBtn = document.getElementById('close-search-modal');
     if (closeSearchBtn) {
         closeSearchBtn.addEventListener('click', () => {
+            const exchangeResultsContainer = document.getElementById('exchange-results-container');
+            exchangeResultsContainer.style.display = 'none';
             toggleSearchModal(false);
         });
     }
@@ -774,11 +776,15 @@ function updatePairButtons(activePair) {
         }
     });
 }
-
+async function getDataPath() {
+    const userDataPath = await ipcRenderer.invoke('get-user-data-path');
+    return path.join(userDataPath, 'data.json');
+}
 // Function to refresh the crypto list UI
 async function refreshCryptoList() {
     const cryptoListEl = document.getElementById('crypto-list');
-    const listCryptos = await JSON.parse(fs.readFileSync(path.join(__dirname, 'public', 'data.json'), 'utf8'));
+    const dataPath = await getDataPath();
+    const listCryptos = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
     
     const fetchPromises = listCryptos.map(async (crypto, index) => {
         const symbol = crypto.Symbol;
@@ -856,10 +862,8 @@ async function refreshCryptoList() {
                 });
                 item.classList.toggle('active');
                 
-                // Update selectedToken and title
                 selectedToken = `${symbol}/${pair}`;
                 
-                // Add this line to update the title immediately
                 await updatePageTitle();
                 
                 initializeChartArea();
@@ -871,7 +875,7 @@ async function refreshCryptoList() {
             removeBtn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 try {
-                    const dataPath = path.join(__dirname, 'public', 'data.json');
+                    const dataPath = await getDataPath();
                     const currentData = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
                     const updatedData = currentData.filter(item => 
                         !(item.Symbol === symbol && item.exchange === exchange && item.Pair === pair)
