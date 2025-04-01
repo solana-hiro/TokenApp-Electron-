@@ -19,11 +19,51 @@ let preferences = {
 };
 
 let lastPriceInfo = {};
+const userDataPath = app.getPath('userData');
+const dataFilePath = path.join(userDataPath, 'data.json');
+const prefsPath = path.join(userDataPath, 'preferences.json');
+
+try {
+  if (fs.existsSync(prefsPath)) {
+    const savedPrefs = JSON.parse(fs.readFileSync(prefsPath, 'utf8'));
+    preferences = { ...preferences, ...savedPrefs };
+    // Make sure minimizeToTray is set if not in saved prefs
+    if (savedPrefs.minimizeToTray === undefined) {
+      preferences.minimizeToTray = true;
+    }
+  }
+} catch (err) {
+  console.error('Failed to load preferences:', err);
+}
+
+ipcMain.handle('get-user-data-path', () => {
+  return app.getPath('userData');
+});
+
+
+function getDataPath() {
+  return path.join(app.getPath('userData'), 'data.json');
+}
 
 ipcMain.on('price-update', (event, priceData) => {
     lastPriceInfo = priceData;
     updateTrayTooltip();
 });
+
+function initializeDataFile() {
+  const dataPath = getDataPath();
+  if (!fs.existsSync(dataPath)) {
+      const defaultDataPath = path.join(__dirname, 'public', 'data.json');
+      try {
+          const defaultData = fs.readFileSync(defaultDataPath, 'utf8');
+          fs.writeFileSync(dataPath, defaultData);
+      } catch (error) {
+          console.error('Error initializing data file:', error);
+          fs.writeFileSync(dataPath, JSON.stringify([]));
+      }
+  }
+}
+
 
 function updateTrayTooltip() {
   if (!tray) return;
@@ -40,19 +80,7 @@ function updateTrayTooltip() {
   tray.setToolTip(tooltipText);
 }
 
-const prefsPath = path.join(app.getPath('userData'), 'preferences.json');
-try {
-  if (fs.existsSync(prefsPath)) {
-    const savedPrefs = JSON.parse(fs.readFileSync(prefsPath, 'utf8'));
-    preferences = { ...preferences, ...savedPrefs };
-    // Make sure minimizeToTray is set if not in saved prefs
-    if (savedPrefs.minimizeToTray === undefined) {
-      preferences.minimizeToTray = true;
-    }
-  }
-} catch (err) {
-  console.error('Failed to load preferences:', err);
-}
+
 
 // Save preferences periodically
 function savePreferences() {
@@ -279,6 +307,7 @@ function updateTrayMenu() {
 
 // Modify app.whenReady to create the tray
 app.whenReady().then(() => {
+  initializeDataFile();
   createWindow();
   createTray();
 

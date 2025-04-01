@@ -3,26 +3,9 @@ const addCryptoWithPair = require('./addCryptoWithPair');
 const fs = require('fs');
 const path = require('path');
 
-// Function to read current data.json
-function readDataJson() {
-    try {
-        const dataPath = path.join(__dirname, '..', '..', 'public', 'data.json');
-        return JSON.parse(fs.readFileSync(dataPath, 'utf8'));
-    } catch (error) {
-        console.error('Error reading data.json:', error);
-        return [];
-    }
-}
-
-// Function to save to data.json
-function saveToDataJson(data) {
-    try {
-        const dataPath = path.join(__dirname, '..', '..', 'public', 'data.json');
-        fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
-    } catch (error) {
-        console.error('Error writing to data.json:', error);
-        throw error;
-    }
+async function getDataPath() {
+    const userDataPath = await ipcRenderer.invoke('get-user-data-path');
+    return path.join(userDataPath, 'data.json');
 }
 
 // Main search function - triggered from the input in widget.html
@@ -207,7 +190,7 @@ async function addCryptoWithExchange(symbol, pair, exchange) {
 }
 
 async function displayAllExchangeData(symbols, container) {
-    const dataPath = path.join(__dirname, '..', '..', 'public', 'data.json');
+    const dataPath = await getDataPath();
     let currentData = [];
     try {
         currentData = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
@@ -311,7 +294,7 @@ async function displayAllExchangeData(symbols, container) {
                             btn.textContent = 'Adding...';
             
                             // Read current data.json
-                            const dataPath = path.join(__dirname, '..', '..', 'public', 'data.json');
+                            const dataPath = await getDataPath();
                             let currentData = [];
                             try {
                                 currentData = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
